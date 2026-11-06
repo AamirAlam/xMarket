@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       intent: TradingIntent;
       apiKeys?: { zeroGKey?: string; definitiveKey?: string };
       walletAddress?: string;
-      agentWallet?: { address: string; privateKey?: string };
+      agentWallet?: { address: string; privateKey?: string; masterController?: string };
     } = body;
 
     if (!tweet || !intent) {
@@ -52,11 +52,27 @@ export async function POST(req: Request) {
 
     // 3. Execution via Definitive Flash API
     if (isMatch) {
+      if (!agentWallet || !agentWallet.address) {
+        const auditRecord: AuditExecutionRecord = {
+          id: `audit-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          tweet,
+          zeroG: zeroGResult,
+          status: "SKIPPED_THRESHOLD",
+          reason: `Sentiment match verified by 0G (${Math.round(zeroGResult.confidence * 100)}%), but no authorized agent session delegation exists. Capital protected; trade skipped.`,
+        };
+        return NextResponse.json({
+          success: true,
+          record: auditRecord,
+          vaultRebateUsd: 0,
+        });
+      }
+
       const order = await executeDefinitiveFlashOrder({
         intent,
         sentimentScore: zeroGResult.sentimentScore,
         apiKey: apiKeys.definitiveKey,
-        funderAddress: agentWallet?.address || walletAddress || "0x71C84A962bFe2487431e50fB79D325603F01498B",
+        funderAddress: walletAddress || agentWallet?.masterController || agentWallet?.address || "0x71C84A962bFe2487431e50fB79D325603F01498B",
         agentPrivateKey: agentWallet?.privateKey,
       });
 

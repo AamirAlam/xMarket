@@ -247,10 +247,11 @@ export function EventTriggerWizard({
     try {
       const master = connectedWallet || "0x71C84A962bFe2487431e50fB79D325603F01498B";
 
-      // Request cryptographic EIP-712 session key delegation from the master connected wallet
+      // Request cryptographic session key delegation from the master connected wallet
       const { signature, activeMaster } = await requestMasterWalletDelegation({
         masterController: master,
         agentWalletAddress: agentWallet.address,
+        sessionKeyAddress: agentWallet.sessionKeyAddress,
         eventName: intent.eventName || `${intent.targetHandle} Catalyst`,
         targetHandle: intent.targetHandle.replace("@", ""),
         allocatedBudgetUsdc: intent.tradeSizeUsdc,
@@ -768,44 +769,70 @@ export function EventTriggerWizard({
               </div>
             </div>
 
-            {/* ERC-4337 Smart Account with Scoped Session Key */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/90 space-y-3">
+            {/* Zero Manual Funding / Direct Main Wallet Deduction Banner */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-blue-500/10 to-indigo-500/10 border border-emerald-500/30 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs shadow-xs">
-                    <Key className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xs shadow-xs">
+                    <Coins className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-900 leading-tight">
-                      ERC-4337 Smart Account (Safe Session Module)
+                    <div className="text-xs font-black text-slate-900 leading-tight flex items-center gap-1.5">
+                      <span>Zero Pre-Funding Required</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wide">
+                        Direct Main Wallet Deduction
+                      </span>
                     </div>
-                    <div className="text-[10px] text-blue-600 font-mono font-medium">
-                      Arbitrum One Counterfactual Contract • 100% Master Custody
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      No manual deposits needed • Capital deducted on-demand when trade fires
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={handleRegenerateAgentWallet}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 text-[10px] font-bold text-blue-700 transition cursor-pointer"
-                    title="Generate a fresh Smart Account & Session Key pair for this card"
-                  >
-                    <RefreshCw className="w-3 h-3 text-blue-600" />
-                    <span>Regenerate Account</span>
-                  </button>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Safe Account Armed</span>
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-white" />
+                    <span>$0 Deposit Needed</span>
                   </span>
                 </div>
               </div>
 
-              {/* Smart Account & Session Key Addresses */}
-              <div className="space-y-2">
+              {/* Deduction & Routing Specifications */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className="p-2.5 rounded-xl bg-white/95 border border-emerald-100 shadow-2xs">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Manual Pre-Funding</span>
+                  <div className="font-mono font-black text-emerald-700 text-sm mt-0.5">$0.00</div>
+                  <span className="text-[9px] text-slate-500">Zero transfers</span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white/95 border border-emerald-100 shadow-2xs">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Capital Custody</span>
+                  <div className="font-mono font-bold text-slate-900 text-xs mt-0.5 truncate">
+                    {connectedWallet ? `${connectedWallet.slice(0, 6)}...${connectedWallet.slice(-4)}` : "Connected EOA"}
+                  </div>
+                  <span className="text-[9px] text-emerald-600 font-semibold">100% in Main Wallet</span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white/95 border border-emerald-100 shadow-2xs">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Deduction Method</span>
+                  <div className="font-bold text-blue-700 text-xs mt-0.5">Flash JIT Pull</div>
+                  <span className="text-[9px] text-slate-500">Only on Catalyst</span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white/95 border border-emerald-100 shadow-2xs">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Exit Proceeds</span>
+                  <div className="font-bold text-emerald-700 text-xs mt-0.5">Direct to Main</div>
+                  <span className="text-[9px] text-slate-500">No withdrawal step</span>
+                </div>
+              </div>
+
+              {/* Dedicated Agent Identity & Session Key Details */}
+              <div className="space-y-2 pt-1 border-t border-slate-200/60">
                 <div className="p-3 rounded-xl bg-white/95 border border-blue-100 flex items-center justify-between shadow-2xs">
                   <div>
-                    <div className="text-[9px] uppercase font-bold text-slate-400">Smart Account (Funds &amp; Custody)</div>
+                    <div className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <Wallet className="w-3 h-3 text-blue-600" />
+                      <span>Dedicated Agent Session Contract (Arbitrum One)</span>
+                    </div>
                     <div className="font-mono font-bold text-slate-900 text-xs mt-0.5">
                       {agentWallet.address}
                     </div>
@@ -819,7 +846,7 @@ export function EventTriggerWizard({
                         setTimeout(() => setCopiedWallet(false), 2000);
                       }}
                       className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 transition cursor-pointer"
-                      title="Copy Smart Account Address"
+                      title="Copy Address"
                     >
                       {copiedWallet ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
@@ -828,7 +855,7 @@ export function EventTriggerWizard({
                       target="_blank"
                       rel="noreferrer"
                       className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-blue-600 transition cursor-pointer"
-                      title="View Smart Account on Arbiscan"
+                      title="View Agent on Arbiscan"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
@@ -837,9 +864,9 @@ export function EventTriggerWizard({
 
                 <div className="p-2.5 rounded-xl bg-white/80 border border-blue-50 flex items-center justify-between text-[11px]">
                   <div>
-                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Scoped Session Key (Agent Executor)</span>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Scoped Session Authorization</span>
                     <span className="font-mono text-slate-700 text-xs font-semibold">
-                      {agentWallet.sessionKeyAddress ? `${agentWallet.sessionKeyAddress.slice(0, 10)}...${agentWallet.sessionKeyAddress.slice(-8)}` : "Restricted to Definitive Flash Router"}
+                      Allowed Spender: Definitive Flash Router (0x4c27...04B3) • Max ${intent.tradeSizeUsdc} USDC
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 font-bold">
@@ -848,33 +875,10 @@ export function EventTriggerWizard({
                 </div>
               </div>
 
-              {/* Controller & Parameters Matrix */}
-              <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 pt-0.5">
-                <div className="truncate p-2 rounded-lg bg-white/70 border border-blue-50">
-                  <span className="text-slate-400 block font-bold uppercase text-[9px]">Master Owner (100% Custody)</span>
-                  <span className="font-mono font-bold text-slate-800 text-[11px] truncate block">
-                    {agentWallet.masterController.slice(0, 8)}...{agentWallet.masterController.slice(-6)}
-                  </span>
-                  {connectedWallet ? (
-                    <span className="text-[9px] text-emerald-600 font-semibold">● Connected Master</span>
-                  ) : (
-                    <span className="text-[9px] text-amber-600 font-semibold">● Master EOA</span>
-                  )}
-                </div>
-
-                <div className="truncate p-2 rounded-lg bg-white/70 border border-blue-50">
-                  <span className="text-slate-400 block font-bold uppercase text-[9px]">Session Spend Cap</span>
-                  <span className="font-mono font-bold text-blue-700 text-[11px] block">
-                    ${intent.tradeSizeUsdc} USDC
-                  </span>
-                  <span className="text-[9px] text-slate-500 font-medium">Definitive Flash Bracket</span>
-                </div>
-              </div>
-
-              <div className="text-[10px] text-slate-600 font-medium leading-relaxed bg-white/60 p-2.5 rounded-xl border border-blue-100/60 flex items-start gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="text-[10px] text-slate-600 font-medium leading-relaxed bg-white/70 p-2.5 rounded-xl border border-emerald-100/80 flex items-start gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Safe &amp; Loss-Proof:</strong> Capital resides inside your ERC-4337 Smart Account on Arbitrum One, never in an ephemeral key. The session key can <em>only</em> execute Definitive Flash bracket trades up to ${intent.tradeSizeUsdc} USDC. Your master wallet can trigger an Emergency Sweep anytime!
+                  <strong>Non-Custodial Guarantee:</strong> Your USDC stays inside your connected MetaMask wallet. You do not need to send gas or deposit capital. The agent holds an EIP-712 spend permit capped at exactly ${intent.tradeSizeUsdc} USDC that triggers exclusively when the social catalyst conditions are verified onchain.
                 </span>
               </div>
             </div>
@@ -917,29 +921,34 @@ export function EventTriggerWizard({
             </button>
 
             {/* Primary Submit Button */}
-            <button
-              type="button"
-              onClick={handleConfirmSubmit}
-              disabled={isSubmitting || isSigningDelegation}
-              className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer disabled:opacity-60"
-            >
-              {isSigningDelegation ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Awaiting EIP-712 Signature in Wallet...</span>
-                </>
-              ) : isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Deploying Agent Sub-Wallet...</span>
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="w-4 h-4 text-white" />
-                  <span>Authorize Session &amp; Arm Event Agent</span>
-                </>
-              )}
-            </button>
+            <div className="flex-1 flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={handleConfirmSubmit}
+                disabled={isSubmitting || isSigningDelegation}
+                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-blue-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer disabled:opacity-60"
+              >
+                {isSigningDelegation ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Awaiting EIP-712 Spend Permit Signature...</span>
+                  </>
+                ) : isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Arming Delegated Event Sentinel...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4 text-white" />
+                    <span>Sign Spend Delegation &amp; Arm Agent ($0 Deposit Needed)</span>
+                  </>
+                )}
+              </button>
+              <div className="text-[10px] text-center text-slate-500 font-medium">
+                Funds stay in your main wallet • Deducted on-demand only if catalyst executes
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -91,7 +91,7 @@ export interface AgentWalletInfo {
   policy?: SmartAccountPolicy;
 }
 
-export type PositionStatus = "ARMED" | "OPEN" | "CLOSED" | "PROFIT_TAKEN" | "STOPPED_OUT";
+export type PositionStatus = "ARMED" | "OPEN" | "PAUSED" | "CLOSED" | "PROFIT_TAKEN" | "STOPPED_OUT";
 
 export interface EventPosition {
   id: string;

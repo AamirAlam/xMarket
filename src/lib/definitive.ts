@@ -139,7 +139,7 @@ export async function executeDefinitiveFlashOrder({
               targetChain: "Arbitrum One",
               targetToken: intent.targetAsset,
               contraToken: intent.contraAsset,
-              amount: `$${intent.tradeSizeUsdc} USDC -> ${intent.targetAsset}`,
+              amount: `$${intent.tradeSizeUsdc} USDC (Deducted from Main Wallet) -> ${intent.targetAsset}`,
               txHash,
               bracket: {
                 takeProfitPercentage: takeProfitPct,
@@ -167,7 +167,7 @@ export async function executeDefinitiveFlashOrder({
         targetChain: "Arbitrum One (Flash Route)",
         targetToken: intent.targetAsset,
         contraToken: intent.contraAsset,
-        amount: `$${intent.tradeSizeUsdc} USDC -> ${intent.targetAsset}`,
+        amount: `$${intent.tradeSizeUsdc} USDC (Deducted from Main Wallet) -> ${intent.targetAsset}`,
         txHash,
         bracket: {
           takeProfitPercentage: takeProfitPct,
@@ -197,7 +197,7 @@ export async function executeDefinitiveFlashOrder({
     targetChain: "Arbitrum One (Flash Route)",
     targetToken: intent.targetAsset,
     contraToken: intent.contraAsset,
-    amount: `$${intent.tradeSizeUsdc} USDC -> ${intent.targetAsset}`,
+    amount: `$${intent.tradeSizeUsdc} USDC (Deducted from Main Wallet) -> ${intent.targetAsset}`,
     txHash,
     bracket: {
       takeProfitPercentage: takeProfitPct,
@@ -233,7 +233,7 @@ export async function executeDefinitiveFlashExitOrder({
     stopLossPrice: number;
     takeProfitPct: number;
     stopLossPct: number;
-    agentWallet?: { address: string; privateKey?: string };
+    agentWallet?: { address: string; privateKey?: string; masterController?: string };
   };
   exitType?: "TAKE_PROFIT" | "STOP_LOSS" | "MANUAL_MARKET";
   apiKey?: string;
@@ -270,7 +270,7 @@ export async function executeDefinitiveFlashExitOrder({
 
   const realizedPnlUsd = Math.round(((position.sizeUsdc * realizedPnlPct) / 100) * 100) / 100;
   const feeRebate = Math.round(position.sizeUsdc * 0.001 * 100) / 100;
-  const funderAddress = position.agentWallet?.address || "0x71C84A962bFe2487431e50fB79D325603F01498B";
+  const funderAddress = position.agentWallet?.masterController || position.agentWallet?.address || "0x71C84A962bFe2487431e50fB79D325603F01498B";
 
   // Step 1: Request live Flash sell quote (Target Token -> USDC on Arbitrum)
   try {

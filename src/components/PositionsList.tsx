@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { EventPosition } from "@/types";
+import { EventPosition, PositionStatus } from "@/types";
 import {
   TrendingUp,
   ExternalLink,
@@ -15,27 +15,31 @@ import {
   Check,
   Wallet,
   Trash2,
+  Pause,
+  Play,
+  PauseCircle,
 } from "lucide-react";
 
 interface PositionsListProps {
   positions: EventPosition[];
-  onClosePosition: (id: string) => void;
   onStartNewTrade?: () => void;
   onExecuteExitSell?: (position: EventPosition, exitType?: "TAKE_PROFIT" | "STOP_LOSS" | "MANUAL_MARKET") => Promise<void>;
   onEmergencySweep?: (position: EventPosition) => Promise<void>;
+  onTogglePausePosition?: (position: EventPosition) => Promise<void> | void;
 }
 
 export function PositionsList({
   positions,
-  onClosePosition,
   onStartNewTrade,
   onExecuteExitSell,
   onEmergencySweep,
+  onTogglePausePosition,
 }: PositionsListProps) {
   const [selectedPosition, setSelectedPosition] = useState<EventPosition | null>(null);
   const [copiedTx, setCopiedTx] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
   const [isSweeping, setIsSweeping] = useState(false);
+  const [isTogglingPause, setIsTogglingPause] = useState(false);
 
   const handleCopyTx = async (tx: string) => {
     try {
@@ -122,12 +126,15 @@ export function PositionsList({
                       <span className="text-blue-600 font-medium">{pos.targetAsset}</span>
                     </div>
                     {pos.agentWallet && (
-                      <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono mt-0.5">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-0.5">
                         <span className="text-blue-600 font-medium flex items-center gap-0.5">
                           <Wallet className="w-2.5 h-2.5" />
                           Agent:
                         </span>
                         <span>{pos.agentWallet.address.slice(0, 6)}...{pos.agentWallet.address.slice(-4)}</span>
+                        <span className="px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 text-[9px] font-sans font-bold border border-emerald-200">
+                          $0 Deposit • Main Wallet Pull
+                        </span>
                       </div>
                     )}
                   </div>
@@ -176,24 +183,27 @@ export function PositionsList({
                 {/* Col 5: Live PnL */}
                 <div className="text-left sm:text-right min-w-[105px]">
                   <span className="text-[9px] text-slate-400 font-medium uppercase block sm:hidden">Live PnL</span>
-                  {isArmed ? (
+                  {pos.status === "ARMED" ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-medium border border-blue-200">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
                       <span>Armed</span>
                     </span>
+                  ) : pos.status === "PAUSED" ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-semibold border border-amber-200">
+                      <Pause className="w-2.5 h-2.5 fill-current" />
+                      <span>Paused</span>
+                    </span>
                   ) : (
                     <div>
                       <div
-                        className={`font-semibold text-xs ${
-                          isProfitable ? "text-emerald-600" : "text-rose-600"
-                        }`}
+                        className={`font-semibold text-xs ${isProfitable ? "text-emerald-600" : "text-rose-600"
+                          }`}
                       >
                         {isProfitable ? `+$${pos.pnlUsd.toFixed(2)}` : `-$${Math.abs(pos.pnlUsd).toFixed(2)}`}
                       </div>
                       <div
-                        className={`text-[10px] font-medium ${
-                          isProfitable ? "text-emerald-600" : "text-rose-600"
-                        }`}
+                        className={`text-[10px] font-medium ${isProfitable ? "text-emerald-600" : "text-rose-600"
+                          }`}
                       >
                         ({isProfitable ? `+${pos.pnlPct.toFixed(1)}%` : `${pos.pnlPct.toFixed(1)}%`})
                       </div>
@@ -201,23 +211,8 @@ export function PositionsList({
                   )}
                 </div>
 
-                {/* Col 6: Right Action: Settle Sell, View & Close/Revoke Delegation */}
-                <div className="flex items-center justify-end gap-1.5 shrink-0">
-                  {pos.status === "OPEN" && onExecuteExitSell && (
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        await onExecuteExitSell(pos, "TAKE_PROFIT");
-                      }}
-                      className="px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition flex items-center gap-1 active:scale-95 cursor-pointer"
-                      title="Execute final SELL trade on Arbitrum via Definitive Flash"
-                    >
-                      <span>Settle Sell</span>
-                      <ArrowUpRight className="w-3.5 h-3.5 stroke-[2]" />
-                    </button>
-                  )}
-
+                {/* Col 6: Right Action: View Details */}
+                <div className="flex items-center justify-end shrink-0">
                   <button
                     type="button"
                     onClick={() => setSelectedPosition(pos)}
@@ -225,18 +220,6 @@ export function PositionsList({
                   >
                     <span>View</span>
                     <ArrowUpRight className="w-3.5 h-3.5 stroke-[1.75]" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onClosePosition(pos.id);
-                    }}
-                    className="p-1.5 rounded-full border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition cursor-pointer"
-                    title="Close position, revoke wallet delegation and delete card"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -295,11 +278,15 @@ export function PositionsList({
                     <Radio className="w-4 h-4 text-blue-600 animate-pulse stroke-[1.75]" />
                     <span>Sentinel Armed (Monitoring)</span>
                   </div>
+                ) : selectedPosition.status === "PAUSED" ? (
+                  <div className="text-base font-medium text-amber-700 flex items-center gap-1.5 mt-0.5">
+                    <Pause className="w-4 h-4 fill-current stroke-[1.75]" />
+                    <span>Agent Paused (Triggers Suspended)</span>
+                  </div>
                 ) : (
                   <div
-                    className={`text-2xl font-bold mt-0.5 ${
-                      selectedPosition.pnlUsd >= 0 ? "text-emerald-600" : "text-rose-600"
-                    }`}
+                    className={`text-2xl font-bold mt-0.5 ${selectedPosition.pnlUsd >= 0 ? "text-emerald-600" : "text-rose-600"
+                      }`}
                   >
                     {selectedPosition.pnlUsd >= 0 ? `+$${selectedPosition.pnlUsd.toFixed(2)}` : `-$${Math.abs(selectedPosition.pnlUsd).toFixed(2)}`}
                     <span className="text-sm font-medium ml-1.5">
@@ -310,7 +297,15 @@ export function PositionsList({
               </div>
 
               {/* Status Pill */}
-              <span className="px-3 py-1 rounded-full text-xs font-medium border border-slate-200 bg-white text-slate-800 shadow-2xs">
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-2xs ${
+                selectedPosition.status === "ARMED"
+                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                  : selectedPosition.status === "OPEN"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : selectedPosition.status === "PAUSED"
+                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : "bg-slate-50 text-slate-700 border-slate-200"
+              }`}>
                 {selectedPosition.status}
               </span>
             </div>
@@ -376,39 +371,39 @@ export function PositionsList({
               </div>
             </div>
 
-            {/* Dedicated Non-Custodial Agent Wallet & ERC-4337 Smart Account */}
+            {/* Dedicated Non-Custodial Agent Wallet & Direct Main Wallet Delegation */}
             {selectedPosition.agentWallet && (
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200 space-y-2.5 text-xs">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-blue-50/80 to-indigo-50/80 border border-emerald-200/80 space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                    <Wallet className="w-3.5 h-3.5 text-blue-600" />
-                    <span>ERC-4337 Smart Account (Safe Session Module)</span>
+                    <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Direct Main Wallet Delegation (Zero Pre-Funding)</span>
                   </div>
-                  <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-bold">
-                    100% Master Custody
+                  <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-bold">
+                    $0 Deposit Needed
                   </span>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-white border border-blue-100 flex items-center justify-between font-mono">
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between font-mono shadow-2xs">
                   <div className="min-w-0 pr-2">
-                    <span className="text-[9px] text-slate-400 block font-sans uppercase font-bold">Smart Account (Arbitrum Contract)</span>
-                    <span className="text-slate-800 text-xs font-bold truncate block">{selectedPosition.agentWallet.address}</span>
+                    <span className="text-[9px] text-slate-400 block font-sans uppercase font-bold">Main Connected Wallet (Funds Custody)</span>
+                    <span className="text-slate-800 text-xs font-bold truncate block">{selectedPosition.agentWallet.masterController}</span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() => handleCopyTx(selectedPosition.agentWallet!.address)}
+                      onClick={() => handleCopyTx(selectedPosition.agentWallet!.masterController)}
                       className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition cursor-pointer"
-                      title="Copy Address"
+                      title="Copy Master Wallet Address"
                     >
                       {copiedTx ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                     </button>
                     <a
-                      href={selectedPosition.agentWallet.explorerUrl}
+                      href={`https://arbiscan.io/address/${selectedPosition.agentWallet.masterController}`}
                       target="_blank"
                       rel="noreferrer"
                       className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-blue-600 transition cursor-pointer"
-                      title="View on Arbiscan"
+                      title="View Master Wallet on Arbiscan"
                     >
                       <ExternalLink className="w-3 h-3" />
                     </a>
@@ -416,47 +411,27 @@ export function PositionsList({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 pt-0.5">
-                  <div className="p-2 rounded-lg bg-white/70 border border-blue-50">
-                    <span className="text-slate-400 block font-bold uppercase text-[9px]">Master Owner (Full Custody)</span>
+                  <div className="p-2 rounded-lg bg-white/80 border border-slate-200/80">
+                    <span className="text-slate-400 block font-bold uppercase text-[9px]">Agent Session Executor</span>
                     <span className="font-mono font-bold text-slate-800 text-[11px] truncate block">
-                      {selectedPosition.agentWallet.masterController.slice(0, 8)}...{selectedPosition.agentWallet.masterController.slice(-6)}
+                      {selectedPosition.agentWallet.sessionKeyAddress ? `${selectedPosition.agentWallet.sessionKeyAddress.slice(0, 8)}...${selectedPosition.agentWallet.sessionKeyAddress.slice(-6)}` : selectedPosition.agentWallet.address.slice(0, 10)}
                     </span>
+                    <span className="text-[9px] text-blue-600 font-semibold">Definitive Router Locked</span>
                   </div>
-                  <div className="p-2 rounded-lg bg-white/70 border border-blue-50">
-                    <span className="text-slate-400 block font-bold uppercase text-[9px]">Scoped Session Key</span>
-                    <span className="font-mono font-bold text-blue-700 text-[11px] truncate block">
-                      {selectedPosition.agentWallet.sessionKeyAddress ? `${selectedPosition.agentWallet.sessionKeyAddress.slice(0, 8)}...${selectedPosition.agentWallet.sessionKeyAddress.slice(-6)}` : "Router Locked"}
+                  <div className="p-2 rounded-lg bg-white/80 border border-slate-200/80">
+                    <span className="text-slate-400 block font-bold uppercase text-[9px]">Deduction &amp; Routing</span>
+                    <span className="font-bold text-emerald-700 text-[11px] block">
+                      On-Demand (${selectedPosition.sizeUsdc} USDC)
                     </span>
+                    <span className="text-[9px] text-slate-500 font-medium">Proceeds return to Main</span>
                   </div>
                 </div>
 
-                {/* Emergency Sweep Action */}
-                <div className="pt-1 flex items-center justify-between">
-                  <div className="text-[10px] text-slate-500">
-                    {selectedPosition.isSwept ? (
-                      <span className="text-emerald-700 font-bold">✓ Capital Swept to Master Wallet</span>
-                    ) : (
-                      <span>Session restricted to Flash Router</span>
-                    )}
-                  </div>
-                  {!selectedPosition.isSwept && onEmergencySweep && (
-                    <button
-                      type="button"
-                      disabled={isSweeping}
-                      onClick={async () => {
-                        setIsSweeping(true);
-                        try {
-                          await onEmergencySweep(selectedPosition);
-                        } finally {
-                          setIsSweeping(false);
-                        }
-                      }}
-                      className="px-2.5 py-1 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[10px] transition cursor-pointer disabled:opacity-60"
-                      title="Emergency Sweep: Withdraws 100% of smart account capital back to your master wallet"
-                    >
-                      {isSweeping ? "Sweeping..." : "Emergency Sweep to Master"}
-                    </button>
-                  )}
+                <div className="text-[10px] text-slate-600 font-medium leading-relaxed bg-white/70 p-2.5 rounded-xl border border-emerald-100 flex items-start gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Delegated Spend Security:</strong> Funds never left your main wallet prior to trade trigger. When the catalyst fired, Definitive Flash Router deducted ${selectedPosition.sizeUsdc} USDC on-demand via the signed spend permit.
+                  </span>
                 </div>
               </div>
             )}
@@ -498,65 +473,94 @@ export function PositionsList({
               )}
             </div>
 
-            {/* Final On-Chain Arbitrum Execution Receipts: BUY & SELL */}
+            {/* Real On-Chain Execution Status & Receipts */}
             <div className="space-y-2.5">
               <span className="text-xs font-bold text-slate-900 block">
-                Final On-Chain Execution Receipts (Arbitrum One)
+                On-Chain Execution &amp; Settlements (Arbitrum One)
               </span>
 
-              {/* 1. Final BUY Trade (Entry Swap) */}
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-blue-700 flex items-center gap-1 text-[11px]">
-                    <span className="w-2 h-2 rounded-full bg-blue-500" />
-                    <span>Final BUY Trade (Entry Swap)</span>
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    FILLED (${selectedPosition.sizeUsdc} USDC &rarr; {selectedPosition.targetAsset})
-                  </span>
+              {/* State A: Position is ARMED (Waiting for real X trigger) */}
+              {selectedPosition.status === "ARMED" && (
+                <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200/80 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-900 flex items-center gap-1.5">
+                      <Radio className="w-4 h-4 text-blue-600 animate-pulse stroke-[1.75]" />
+                      <span>Sentinel Armed &amp; Listening to Real X Events</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-blue-700 bg-white px-2.5 py-0.5 rounded-full border border-blue-200">
+                      Awaiting Trigger
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    This sentinel is actively monitoring public posts from <strong>@{selectedPosition.targetHandle}</strong> matching <em>&ldquo;{selectedPosition.eventName}&rdquo;</em>.
+                  </p>
+                  <div className="p-3 rounded-xl bg-white border border-blue-100 text-[11px] text-slate-600 space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 font-medium">On-Chain Trade Execution:</span>
+                      <span className="font-bold text-slate-800">Pending Catalyst Event ($0 Deducted)</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 font-medium">Verification Model:</span>
+                      <span className="font-bold text-blue-700">0G Verifiable TEE (≥{Math.round(selectedPosition.confidenceThreshold * 100)}% Proof)</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 font-medium">Flash Order Type:</span>
+                      <span className="font-bold text-slate-700">Definitive Flash Market Buy + Attached Bracket</span>
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                <div className="flex items-center justify-between pt-1">
-                  <span className="truncate max-w-[240px] text-slate-700 text-[11px] font-mono">
-                    {selectedPosition.entryTxHash || selectedPosition.txHash || "0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc"}
-                  </span>
-                  <a
-                    href={selectedPosition.entryExplorerUrl || selectedPosition.explorerUrl || `https://arbiscan.io/tx/${selectedPosition.txHash}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 hover:text-blue-700 font-bold inline-flex items-center gap-0.5 text-xs"
-                  >
-                    <span>Arbiscan</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+              {/* State B: Real BUY Trade Execution Receipt (Shown once tweet triggers trade) */}
+              {selectedPosition.entryTxHash && (
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-700 flex items-center gap-1 text-[11px]">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span>Real BUY Trade (Entry Swap)</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      FILLED (${selectedPosition.sizeUsdc} USDC &rarr; {selectedPosition.targetAsset})
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="truncate max-w-[240px] text-slate-700 text-[11px] font-mono">
+                      {selectedPosition.entryTxHash}
+                    </span>
+                    <a
+                      href={selectedPosition.entryExplorerUrl || `https://arbiscan.io/tx/${selectedPosition.entryTxHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 hover:text-blue-700 font-bold inline-flex items-center gap-0.5 text-xs"
+                    >
+                      <span>Arbiscan</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* 2. Final SELL Trade (Attached Bracket Exit Swap) */}
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
-                    <span className="w-2 h-2 rounded-full bg-purple-500" />
-                    <span>Final SELL Trade (Attached Bracket Exit)</span>
-                  </span>
-                  <span
-                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                      selectedPosition.status === "PROFIT_TAKEN"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : selectedPosition.status === "STOPPED_OUT"
-                        ? "bg-rose-50 text-rose-700 border-rose-200"
-                        : "bg-blue-50 text-blue-700 border-blue-200"
-                    }`}
-                  >
-                    {selectedPosition.status === "PROFIT_TAKEN"
-                      ? "FILLED (Take-Profit +5%)"
-                      : selectedPosition.status === "STOPPED_OUT"
-                      ? "FILLED (Stop-Loss -2.5%)"
-                      : "ARMED & MONITORING BRACKET"}
-                  </span>
-                </div>
+              {/* State C: Real SELL Trade (Only shown if a real exit trade has actually settled) */}
+              {selectedPosition.exitTxHash ? (
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
+                      <span className="w-2 h-2 rounded-full bg-purple-500" />
+                      <span>Real SELL Trade (Bracket Exit Settlement)</span>
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${selectedPosition.status === "PROFIT_TAKEN"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-rose-50 text-rose-700 border-rose-200"
+                        }`}
+                    >
+                      {selectedPosition.status === "PROFIT_TAKEN"
+                        ? `FILLED (Take-Profit +${selectedPosition.takeProfitPct}%)`
+                        : `FILLED (Stop-Loss -${selectedPosition.stopLossPct}%)`}
+                    </span>
+                  </div>
 
-                {selectedPosition.exitTxHash ? (
                   <div className="flex items-center justify-between pt-1">
                     <span className="truncate max-w-[240px] text-slate-700 text-[11px] font-mono">
                       {selectedPosition.exitTxHash}
@@ -571,72 +575,68 @@ export function PositionsList({
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
-                ) : (
-                  <div className="space-y-1.5 pt-1">
-                    <p className="text-[11px] text-slate-500 font-normal">
-                      Definitive Flash attached bracket is monitoring mark price on Arbitrum One. You can also trigger the final sell trade now:
-                    </p>
-                    {onExecuteExitSell && (
-                      <div className="flex items-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          disabled={isSelling}
-                          onClick={async () => {
-                            setIsSelling(true);
-                            try {
-                              await onExecuteExitSell(selectedPosition, "TAKE_PROFIT");
-                            } finally {
-                              setIsSelling(false);
-                            }
-                          }}
-                          className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-2xs cursor-pointer active:scale-95 disabled:opacity-60"
-                        >
-                          {isSelling ? "Executing Sell..." : `Run Take-Profit Sell (+${selectedPosition.takeProfitPct}%)`}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isSelling}
-                          onClick={async () => {
-                            setIsSelling(true);
-                            try {
-                              await onExecuteExitSell(selectedPosition, "STOP_LOSS");
-                            } finally {
-                              setIsSelling(false);
-                            }
-                          }}
-                          className="py-1.5 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition cursor-pointer active:scale-95 disabled:opacity-60"
-                        >
-                          Stop-Loss Sell
-                        </button>
-                      </div>
-                    )}
+                </div>
+              ) : selectedPosition.status === "OPEN" ? (
+                /* State D: Position is OPEN, bracket active, can be settled on-demand */
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
+                      <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                      <span>Definitive Flash Attached Bracket (Monitoring)</span>
+                    </span>
+                    <span className="text-[10px] font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
+                      ACTIVE ON ARBITRUM
+                    </span>
                   </div>
-                )}
-              </div>
+
+                  <p className="text-[11px] text-slate-500 font-normal">
+                    Monitoring mark price on Arbitrum One. You can also trigger the real exit sell trade onchain now:
+                  </p>
+
+                  {onExecuteExitSell && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        disabled={isSelling}
+                        onClick={async () => {
+                          setIsSelling(true);
+                          try {
+                            await onExecuteExitSell(selectedPosition, "TAKE_PROFIT");
+                          } finally {
+                            setIsSelling(false);
+                          }
+                        }}
+                        className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-2xs cursor-pointer active:scale-95 disabled:opacity-60"
+                      >
+                        {isSelling ? "Executing Sell..." : `Run Take-Profit Sell (+${selectedPosition.takeProfitPct}%)`}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSelling}
+                        onClick={async () => {
+                          setIsSelling(true);
+                          try {
+                            await onExecuteExitSell(selectedPosition, "STOP_LOSS");
+                          } finally {
+                            setIsSelling(false);
+                          }
+                        }}
+                        className="py-1.5 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition cursor-pointer active:scale-95 disabled:opacity-60"
+                      >
+                        Stop-Loss Sell
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
 
-            {/* Modal Actions */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  onClosePosition(selectedPosition.id);
-                  setSelectedPosition(null);
-                }}
-                className="px-4 py-2 rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                <span>
-                  {selectedPosition.status === "ARMED"
-                    ? "Cancel Sentinel & Revoke Delegation"
-                    : "Close Position & Revoke Delegation"}
-                </span>
-              </button>
-
+            {/* Modal Actions (Delete button removed per specification) */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedPosition(null)}
-                className="px-6 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition cursor-pointer shadow-xs ml-auto"
+                className="px-6 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition cursor-pointer shadow-xs"
               >
                 Dismiss
               </button>
