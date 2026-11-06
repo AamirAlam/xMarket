@@ -130,45 +130,69 @@ export async function executeDefinitiveFlashOrder({
 
           if (orderRes.ok) {
             const orderData = await orderRes.json();
-            const orderId = orderData.orderId || `flash-${Date.now()}`;
-            const txHash = orderData.txHash || `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
+            const orderId = orderData.orderId;
+            let txHash = orderData.txHash || "";
 
-            return {
-              orderId,
-              status: "FILLED",
-              targetChain: "Arbitrum One",
-              targetToken: intent.targetAsset,
-              contraToken: intent.contraAsset,
-              amount: `$${intent.tradeSizeUsdc} USDC (Deducted from Main Wallet) -> ${intent.targetAsset}`,
-              txHash,
-              bracket: {
-                takeProfitPercentage: takeProfitPct,
-                stopLossPercentage: stopLossPct,
-                estimatedTakeProfitPrice: tpPrice,
-                estimatedStopLossPrice: slPrice,
-              },
-              integratorFeeRebateUsd: feeRebate,
-              explorerUrl: `https://arbiscan.io/tx/${txHash}`,
-              timestamp: new Date().toISOString(),
-              isSimulatedFallback: false,
-              agentWalletAddress: funderAddress,
-            };
+            if (!txHash && orderId) {
+              for (let i = 0; i < 6; i++) {
+                await new Promise((r) => setTimeout(r, 1500));
+                try {
+                  const sRes = await fetch(`${FLASH_API_BASE}/orders/${orderId}?funderAddress=${encodeURIComponent(funderAddress)}`, {
+                    headers: { "x-definitive-api-key": token },
+                  });
+                  if (sRes.ok) {
+                    const sData = await sRes.json();
+                    if (sData.txHash) {
+                      txHash = sData.txHash;
+                      break;
+                    }
+                  }
+                } catch {
+                  // ignore
+                }
+              }
+            }
+
+            if (txHash) {
+              return {
+                orderId,
+                status: "FILLED",
+                targetChain: "Arbitrum One",
+                targetToken: intent.targetAsset,
+                contraToken: intent.contraAsset,
+                amount: `$${intent.tradeSizeUsdc} USDC (Deducted from Main Wallet) -> ${intent.targetAsset}`,
+                txHash,
+                bracket: {
+                  takeProfitPercentage: takeProfitPct,
+                  stopLossPercentage: stopLossPct,
+                  estimatedTakeProfitPrice: tpPrice,
+                  estimatedStopLossPrice: slPrice,
+                },
+                integratorFeeRebateUsd: feeRebate,
+                explorerUrl: `https://arbiscan.io/tx/${txHash}`,
+                timestamp: new Date().toISOString(),
+                isSimulatedFallback: false,
+                agentWalletAddress: funderAddress,
+              };
+            }
+          } else {
+            const errData = await orderRes.json().catch(() => ({}));
+            console.warn("Definitive Flash order rejected:", errData);
           }
         } catch (orderSubmitErr) {
           console.warn("Flash /order submission note:", orderSubmitErr);
         }
       }
 
-      // Quote succeeded: return verified Flash order receipt with live Quote ID
-      const txHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
+      // If order not filled onchain yet, return status PENDING with real quoteId
       return {
         orderId: quoteData.quoteId ? `flash-ord-${quoteData.quoteId.slice(0, 8)}` : `flash-${Date.now()}`,
-        status: "FILLED",
+        status: "PENDING",
         targetChain: "Arbitrum One (Flash Route)",
         targetToken: intent.targetAsset,
         contraToken: intent.contraAsset,
-        amount: `$${intent.tradeSizeUsdc} USDC (Deducted from Main Wallet) -> ${intent.targetAsset}`,
-        txHash,
+        amount: `$${intent.tradeSizeUsdc} USDC -> ${intent.targetAsset}`,
+        txHash: "",
         bracket: {
           takeProfitPercentage: takeProfitPct,
           stopLossPercentage: stopLossPct,
@@ -176,41 +200,18 @@ export async function executeDefinitiveFlashOrder({
           estimatedStopLossPrice: slPrice,
         },
         integratorFeeRebateUsd: feeRebate,
-        explorerUrl: `https://arbiscan.io/tx/${txHash}`,
+        explorerUrl: "",
         timestamp: new Date().toISOString(),
         isSimulatedFallback: false,
         agentWalletAddress: funderAddress,
       };
     }
-  } catch (err) {
+  } catch (err: any) {
     console.warn("Definitive Flash API error:", err);
+    throw new Error(`Definitive Flash execution error: ${err?.message || "Route unavailable"}`);
   }
 
-  // Fallback realistic verifiable order receipt
-  const randomHex = Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-  const txHash = `0x${randomHex}`;
-  const orderId = `flash-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
-
-  return {
-    orderId,
-    status: "FILLED",
-    targetChain: "Arbitrum One (Flash Route)",
-    targetToken: intent.targetAsset,
-    contraToken: intent.contraAsset,
-    amount: `$${intent.tradeSizeUsdc} USDC (Deducted from Main Wallet) -> ${intent.targetAsset}`,
-    txHash,
-    bracket: {
-      takeProfitPercentage: takeProfitPct,
-      stopLossPercentage: stopLossPct,
-      estimatedTakeProfitPrice: tpPrice,
-      estimatedStopLossPrice: slPrice,
-    },
-    integratorFeeRebateUsd: feeRebate,
-    explorerUrl: `https://arbiscan.io/tx/${txHash}`,
-    timestamp: new Date().toISOString(),
-    isSimulatedFallback: true,
-    agentWalletAddress: funderAddress,
-  };
+  throw new Error("Definitive Flash quote could not be obtained for this route.");
 }
 
 /**
@@ -330,20 +331,22 @@ export async function executeDefinitiveFlashExitOrder({
 
           if (orderRes.ok) {
             const orderData = await orderRes.json();
-            const txHash = orderData.txHash || `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
+            const txHash = orderData.txHash || "";
 
-            return {
-              exitTxHash: txHash,
-              exitExplorerUrl: `https://arbiscan.io/tx/${txHash}`,
-              exitPrice,
-              realizedPnlUsd,
-              realizedPnlPct,
-              vaultRebateUsd: feeRebate,
-              status,
-            };
+            if (txHash) {
+              return {
+                exitTxHash: txHash,
+                exitExplorerUrl: `https://arbiscan.io/tx/${txHash}`,
+                exitPrice,
+                realizedPnlUsd,
+                realizedPnlPct,
+                vaultRebateUsd: feeRebate,
+                status,
+              };
+            }
           }
-        } catch {
-          // fallback
+        } catch (err) {
+          console.warn("Flash Sell /order error:", err);
         }
       }
     }
@@ -351,13 +354,9 @@ export async function executeDefinitiveFlashExitOrder({
     console.warn("Flash Sell Order API note:", err);
   }
 
-  // Live verified deterministic Arbitrum One settlement hash
-  const randomHex = Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-  const exitTxHash = `0x${randomHex}`;
-
   return {
-    exitTxHash,
-    exitExplorerUrl: `https://arbiscan.io/tx/${exitTxHash}`,
+    exitTxHash: "",
+    exitExplorerUrl: "",
     exitPrice,
     realizedPnlUsd,
     realizedPnlPct,

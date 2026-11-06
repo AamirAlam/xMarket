@@ -76,14 +76,18 @@ export async function POST(req: Request) {
         agentPrivateKey: agentWallet?.privateKey,
       });
 
+      const isFilledOnChain = Boolean(order.txHash && order.status === "FILLED");
+
       const auditRecord: AuditExecutionRecord = {
         id: `audit-${Date.now()}`,
         timestamp: new Date().toISOString(),
         tweet,
         zeroG: zeroGResult,
         order,
-        status: "EXECUTED",
-        reason: `Confidence (${Math.round(zeroGResult.confidence * 100)}%) exceeded threshold (${Math.round(intent.confidenceThreshold * 100)}%). Placed ${intent.orderType} order via Definitive Flash.`,
+        status: isFilledOnChain ? "EXECUTED" : "PENDING",
+        reason: isFilledOnChain
+          ? `Confidence (${Math.round(zeroGResult.confidence * 100)}%) exceeded threshold (${Math.round(intent.confidenceThreshold * 100)}%). Placed ${intent.orderType} order via Definitive Flash.`
+          : `0G verified catalyst sentiment (${Math.round(zeroGResult.confidence * 100)}%). Ready for live Definitive Flash swap on Arbitrum One via user wallet signature.`,
       };
 
       return NextResponse.json({

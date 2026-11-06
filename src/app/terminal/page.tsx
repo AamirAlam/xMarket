@@ -7,6 +7,7 @@ import { EventTriggerWizard } from "@/components/EventTriggerWizard";
 import { PositionsList } from "@/components/PositionsList";
 import { LiveMonitor } from "@/components/LiveMonitor";
 import { AgentVault } from "@/components/AgentVault";
+import { TradesHistoryTable } from "@/components/TradesHistoryTable";
 import {
   TradingIntent,
   DetectedTweet,
@@ -15,7 +16,9 @@ import {
   AgentVaultState,
   AuditExecutionRecord,
   EventPosition,
+  PositionStatus,
   WalletBalances,
+  AgentTradeRecord,
 } from "@/types";
 import { createAgentWallet } from "@/lib/agentWallet";
 import { fetchRealWalletBalances } from "@/lib/walletBalances";
@@ -56,7 +59,11 @@ function TerminalContent() {
   }, [searchParams]);
 
   // Radar & Ingestion State
-  const [isListening, setIsListening] = useState<boolean>(false);
+  const [isListening, setIsListening] = useState<boolean>(true);
+  const isListeningRef = useRef<boolean>(true);
+  const isPollingRef = useRef<boolean>(false);
+  const [currentPollingHandle, setCurrentPollingHandle] = useState<string>("");
+  const [queueProgress, setQueueProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
   const [pollCountdown, setPollCountdown] = useState<number>(3);
   const [lastTweetId, setLastTweetId] = useState<string>("");
   const [latestTweet, setLatestTweet] = useState<DetectedTweet | null>(null);
@@ -135,6 +142,7 @@ function TerminalContent() {
   }, [positions]);
 
   const lastTweetIdsRef = useRef<Record<string, string>>({});
+  const [isPositionsLoaded, setIsPositionsLoaded] = useState<boolean>(false);
 
   // Load persisted positions from SQLite DB on initial mount
   useEffect(() => {
@@ -145,14 +153,43 @@ function TerminalContent() {
           const data = await res.json();
           if (data.success && Array.isArray(data.positions)) {
             setPositions(data.positions);
+            positionsRef.current = data.positions;
           }
         }
       } catch (err) {
         console.warn("Could not load positions from SQLite DB:", err);
+      } finally {
+        setIsPositionsLoaded(true);
       }
     }
     loadPersistedPositions();
   }, []);
+
+  // Real Agents Trade History State (Persisted in local SQLite database)
+  const [trades, setTrades] = useState<AgentTradeRecord[]>([]);
+  const [isLoadingTrades, setIsLoadingTrades] = useState<boolean>(false);
+
+  const loadTrades = useCallback(async () => {
+    setIsLoadingTrades(true);
+    try {
+      const res = await fetch("/api/trades");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.trades)) {
+          setTrades(data.trades);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load trades from SQLite DB:", err);
+    } finally {
+      setIsLoadingTrades(false);
+    }
+  }, []);
+
+  // Load trades on initial mount
+  useEffect(() => {
+    loadTrades();
+  }, [loadTrades]);
 
   // Sync positions controller whenever master wallet connects or switches
   useEffect(() => {
@@ -246,7 +283,8 @@ function TerminalContent() {
         );
 
         // Persist settlement to SQLite DB
-        persistPositionUpdate(updatedPos);
+        await persistPositionUpdate(updatedPos);
+        loadTrades();
 
         // Update Vault with fee rebate
         setVault((prev) => ({
@@ -288,11 +326,30 @@ function TerminalContent() {
           prev.map((p) => (p.id === pos.id ? sweptPos : p))
         );
 
-        persistPositionUpdate(sweptPos);
+        await persistPositionUpdate(sweptPos);
+        loadTrades();
       }
     } catch (err) {
       console.error("Emergency sweep error:", err);
     }
+  };
+
+  // Pause / Resume Agent Event Triggers & Monitoring
+  const handleTogglePausePosition = async (pos: EventPosition) => {
+    const isCurrentlyPaused = pos.status === "PAUSED";
+    const nextStatus: PositionStatus = isCurrentlyPaused
+      ? (pos.entryTxHash ? "OPEN" : "ARMED")
+      : "PAUSED";
+
+    const updatedPos: EventPosition = {
+      ...pos,
+      status: nextStatus,
+    };
+
+    setPositions((prev) =>
+      prev.map((p) => (p.id === pos.id ? updatedPos : p))
+    );
+    await persistPositionUpdate(updatedPos);
   };
 
   // Audit History (records real executions when tweets are evaluated and trades land onchain)
@@ -406,7 +463,7 @@ function TerminalContent() {
           const record: AuditExecutionRecord = data.record;
           setLatestInference(record.zeroG);
 
-          if (record.status === "EXECUTED" && record.order) {
+          if (record.status === "EXECUTED" && record.order && record.order.txHash) {
             setLatestOrder(record.order);
 
             // Update matching ARMED position to OPEN with live execution
@@ -436,7 +493,9 @@ function TerminalContent() {
                 agentWallet: updated[armedIdx].agentWallet || activeAgentWallet,
               };
               updated[armedIdx] = updatedPos;
-              persistPositionUpdate(updatedPos);
+              persistPositionUpdate(updatedPos).then(() => {
+                loadTrades();
+              });
               return updated;
             });
 
@@ -448,6 +507,19 @@ function TerminalContent() {
               inferencesRunCount: prev.inferencesRunCount + 1,
               tradesExecutedCount: prev.tradesExecutedCount + 1,
             }));
+          } else if (record.status === "PENDING") {
+            setPositions((prev) => {
+              const armedIdx = prev.findIndex((p) => p.id === armedPos.id && p.status === "ARMED");
+              if (armedIdx === -1) return prev;
+              const updated = [...prev];
+              updated[armedIdx] = {
+                ...updated[armedIdx],
+                triggeredTweet: tweet.text,
+              };
+              persistPositionUpdate(updated[armedIdx]);
+              return updated;
+            });
+            setSkipReason("0G Catalyst sentiment verified! Ready to execute real Definitive Flash swap via 'Swap Now'.");
           } else {
             setSkipReason(record.reason);
             setVault((prev) => ({
@@ -468,70 +540,133 @@ function TerminalContent() {
     [intent, apiKeys, walletAddress]
   );
 
-  // Periodic polling when listening
+  // Keep isListeningRef in sync to immediately react in async loops
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  // Periodic polling queue when listening: executes each active agent handle sequentially with a strict 1-second delay
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!isListening) {
+    if (!isListening || !isPositionsLoaded) {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      setCurrentPollingHandle("");
       return;
     }
 
-    const checkTweets = async () => {
+    const runPollingQueue = async () => {
+      // Mutex lock to strictly prevent concurrent overlapping polling cycles
+      if (isPollingRef.current) return;
+      isPollingRef.current = true;
+
       try {
         const headers: Record<string, string> = {};
         if (apiKeys.twitterToken) {
           headers["x-twitter-token"] = apiKeys.twitterToken;
         }
 
-        // Only poll handles for active ARMED positions (or fallback to intent.targetHandle)
-        const armedHandles = Array.from(
+        // 1. Listen ONLY for running agent accounts (ARMED or OPEN)
+        const runningAgentHandles = Array.from(
           new Set(
             positionsRef.current
-              .filter((p) => p.status === "ARMED")
+              .filter((p) => p.status === "ARMED" || p.status === "OPEN")
               .map((p) => p.targetHandle.replace("@", "").trim())
+              .filter(Boolean)
           )
         );
-        const handlesToPoll = armedHandles.length > 0 ? armedHandles : [intent.targetHandle.replace("@", "").trim()];
 
-        for (const handle of handlesToPoll) {
+        // Strictly listen to running agent accounts only if any exist
+        const handlesToPoll =
+          runningAgentHandles.length > 0
+            ? runningAgentHandles
+            : [intent.targetHandle?.replace("@", "").trim()].filter(Boolean);
+
+        setQueueProgress({ current: 0, total: handlesToPoll.length });
+
+        // 3. Process each agent handle sequentially in queue with an exact 1-second delay
+        for (let i = 0; i < handlesToPoll.length; i++) {
+          if (!isListeningRef.current) break;
+
+          const handle = handlesToPoll[i];
+          setCurrentPollingHandle(handle);
+          setQueueProgress({ current: i + 1, total: handlesToPoll.length });
+
           let url = `/api/agent/listen?handle=${encodeURIComponent(handle)}`;
           const sinceId = lastTweetIdsRef.current[handle];
           if (sinceId) {
             url += `&sinceId=${encodeURIComponent(sinceId)}`;
           }
 
-          const res = await fetch(url, { headers });
-          const data = await res.json();
+          try {
+            const res = await fetch(url, { headers });
+            const data = await res.json();
 
-          if (data.success && data.tweets && data.tweets.length > 0) {
-            const freshTweet = data.tweets[0];
-            lastTweetIdsRef.current[handle] = freshTweet.id;
-            setLastTweetId(freshTweet.id);
-            setLatestTweet(freshTweet);
-            // Trigger evaluation
-            await processTweetEvaluation(freshTweet);
+            if (data.success && data.tweets && data.tweets.length > 0) {
+              const freshTweet = data.tweets[0];
+              lastTweetIdsRef.current[handle] = freshTweet.id;
+              setLastTweetId(freshTweet.id);
+              setLatestTweet(freshTweet);
+
+              // Evaluate tweet sentiment & execute trade if agent is armed
+              await processTweetEvaluation(freshTweet);
+            }
+          } catch (pollErr) {
+            console.warn(`Error polling handle @${handle}:`, pollErr);
+          }
+
+          // Strict 1-second delay between handles in the queue to guarantee zero rate-limiting
+          if (i < handlesToPoll.length - 1 && isListeningRef.current) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         }
       } catch (err) {
-        console.warn("Poll cycle error:", err);
+        console.warn("Poll queue cycle error:", err);
+      } finally {
+        setCurrentPollingHandle("");
+        isPollingRef.current = false;
       }
     };
 
-    // Countdown and poll every 3 seconds
+    // Run initial queue cycle immediately
+    runPollingQueue();
+
+    // Countdown and repeat queue every 3 seconds
     let secondsLeft = 3;
     const interval = setInterval(() => {
       secondsLeft -= 1;
       if (secondsLeft <= 0) {
         secondsLeft = 3;
-        checkTweets();
+        runPollingQueue();
       }
       setPollCountdown(secondsLeft);
     }, 1000);
 
     pollTimerRef.current = interval;
     return () => clearInterval(interval);
-  }, [isListening, intent.targetHandle, apiKeys.twitterToken, processTweetEvaluation]);
+  }, [isListening, isPositionsLoaded, intent.targetHandle, apiKeys.twitterToken, processTweetEvaluation]);
+
+  // Fetch latest tweet from a specific person/handle end-to-end (for interactive test)
+  const handleFetchTweetFromPerson = async (targetHandle: string) => {
+    const clean = targetHandle.replace("@", "").trim();
+    if (!clean) return;
+    setIsInjecting(true);
+    try {
+      const res = await fetch(`/api/agent/listen?handle=${encodeURIComponent(clean)}`);
+      const data = await res.json();
+      if (data.success && data.tweets && data.tweets.length > 0) {
+        const freshTweet = data.tweets[0];
+        lastTweetIdsRef.current[clean] = freshTweet.id;
+        setLastTweetId(freshTweet.id);
+        setLatestTweet(freshTweet);
+        await processTweetEvaluation(freshTweet);
+      }
+    } catch (err) {
+      console.error("Fetch person tweet error:", err);
+    } finally {
+      setIsInjecting(false);
+    }
+  };
 
   // Fetch a specific tweet by URL
   const handleFetchTweetByUrl = async (url: string) => {
@@ -587,6 +722,9 @@ function TerminalContent() {
           if (tab === "portfolio" && walletAddress) {
             handleRefreshBalances(walletAddress);
           }
+          if (tab === "history") {
+            loadTrades();
+          }
         }}
         onAddressChange={(addr) => {
           setWalletAddress(addr);
@@ -610,22 +748,52 @@ function TerminalContent() {
                     onStartNewTrade={() => setIsCreatingTrade(true)}
                     onExecuteExitSell={handleExecuteExitSell}
                     onEmergencySweep={handleEmergencySweep}
+                    onTogglePausePosition={handleTogglePausePosition}
+                    connectedWallet={walletAddress}
+                    onPositionUpdated={async (updatedPos) => {
+                      setPositions((prev) =>
+                        prev.map((p) => (p.id === updatedPos.id ? updatedPos : p))
+                      );
+                      await persistPositionUpdate(updatedPos);
+                      loadTrades();
+                      if (walletAddress) {
+                        handleRefreshBalances(walletAddress);
+                      }
+                    }}
                   />
                 </div>
 
                 {/* 4-Size Area: Tweets Tracking & Checking Loader Sign */}
                 <div className="lg:col-span-4">
-                  <LiveMonitor
-                    handle={intent.targetHandle}
-                    isListening={isListening}
-                    latestTweet={latestTweet}
-                    pollSecondsRemaining={pollCountdown}
-                    onInjectTestTweet={handleInjectTestTweet}
-                    onFetchTweetByUrl={handleFetchTweetByUrl}
-                    isInjecting={isInjecting}
-                    trackedHandles={Array.from(new Set(positions.map((p) => p.targetHandle)))}
-                    onToggleListening={() => setIsListening(!isListening)}
-                  />
+                  {(() => {
+                    const runningHandles = Array.from(
+                      new Set(
+                        positions
+                          .filter((p) => p.status === "ARMED" || p.status === "OPEN")
+                          .map((p) => p.targetHandle.replace("@", "").trim())
+                          .filter(Boolean)
+                      )
+                    );
+                    const activeHandle = runningHandles.length > 0 ? runningHandles[0] : intent.targetHandle;
+                    const activeTrackedHandles = runningHandles.length > 0 ? runningHandles : [intent.targetHandle];
+
+                    return (
+                      <LiveMonitor
+                        handle={activeHandle}
+                        isListening={isListening}
+                        latestTweet={latestTweet}
+                        pollSecondsRemaining={pollCountdown}
+                        onInjectTestTweet={handleInjectTestTweet}
+                        onFetchTweetByUrl={handleFetchTweetByUrl}
+                        onFetchTweetFromPerson={handleFetchTweetFromPerson}
+                        isInjecting={isInjecting}
+                        trackedHandles={activeTrackedHandles}
+                        currentCheckingHandle={currentPollingHandle}
+                        queueProgress={queueProgress}
+                        onToggleListening={() => setIsListening(!isListening)}
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             ) : (
@@ -833,109 +1001,17 @@ function TerminalContent() {
           </div>
         )}
 
-        {/* TAB 3: HISTORY (Cryptographic Audit History) */}
+        {/* TAB 3: HISTORY (Real Agents Trade History) */}
         {activeTab === "history" && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="rounded-[32px] border border-slate-200/90 bg-white p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                    <History className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900">Verifiable Audit History ({auditRecords.length})</h3>
-                    <p className="text-xs text-slate-500">Cryptographically verifiable 0G TEE sentiment traces &amp; flash executions</p>
-                  </div>
-                </div>
-                <span className="text-[11px] text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-200 font-medium">
-                  Cryptographic Traceability
-                </span>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-[10px] uppercase text-slate-500 font-bold tracking-wider">
-                      <th className="pb-3">Timestamp</th>
-                      <th className="pb-3">Author &amp; Tweet</th>
-                      <th className="pb-3">0G Proof ID</th>
-                      <th className="pb-3">Sentiment</th>
-                      <th className="pb-3">Flash Order</th>
-                      <th className="pb-3">Agent Wallet</th>
-                      <th className="pb-3 text-right">Explorer</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
-                    {auditRecords.map((rec) => (
-                      <tr key={rec.id} className="hover:bg-slate-50/80 transition">
-                        <td className="py-3 text-slate-500 text-[11px]">
-                          {new Date(rec.timestamp).toLocaleTimeString()}
-                        </td>
-                        <td className="py-3 text-slate-800 max-w-[240px] truncate font-medium">
-                          @{rec.tweet.author}: &ldquo;{rec.tweet.text}&rdquo;
-                        </td>
-                        <td className="py-3 text-blue-700 font-semibold text-[11px]">
-                          {rec.zeroG.requestId}
-                        </td>
-                        <td className="py-3">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${rec.zeroG.sentimentScore > 0
-                                ? "bg-blue-50 text-blue-800 border border-blue-200"
-                                : "bg-rose-50 text-rose-800 border border-rose-200"
-                              }`}
-                          >
-                            {rec.zeroG.sentimentScore > 0 ? `+${rec.zeroG.sentimentScore}` : rec.zeroG.sentimentScore} ({Math.round(rec.zeroG.confidence * 100)}%)
-                          </span>
-                        </td>
-                        <td className="py-3">
-                          {rec.status === "EXECUTED" ? (
-                            <span className="text-blue-700 font-bold flex items-center gap-1.5 text-xs">
-                              <span className="w-2 h-2 rounded-full bg-blue-500" />
-                              Bracket Filled
-                            </span>
-                          ) : (
-                            <span className="text-slate-500 font-medium">Capital Guarded</span>
-                          )}
-                        </td>
-                        <td className="py-3">
-                          {rec.order?.agentWalletAddress ? (
-                            <a
-                              href={`https://arbiscan.io/address/${rec.order.agentWalletAddress}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 font-mono text-[11px] text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-lg border border-purple-200 transition"
-                            >
-                              <ShieldCheck className="w-3 h-3 text-purple-600" />
-                              <span>
-                                {rec.order.agentWalletAddress.slice(0, 6)}...{rec.order.agentWalletAddress.slice(-4)}
-                              </span>
-                            </a>
-                          ) : (
-                            <span className="text-slate-400 font-mono text-[11px]">Non-Custodial</span>
-                          )}
-                        </td>
-                        <td className="py-3 text-right">
-                          {rec.order ? (
-                            <a
-                              href={rec.order.explorerUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-600 hover:text-blue-700 font-bold inline-flex items-center gap-0.5 text-xs"
-                            >
-                              <span>Arbiscan</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            <span className="text-slate-300">-</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <TradesHistoryTable
+            trades={trades}
+            isLoading={isLoadingTrades}
+            onRefresh={loadTrades}
+            onDeployNewTrade={() => {
+              setActiveTab("positions");
+              setIsCreatingTrade(true);
+            }}
+          />
         )}
       </main>
 

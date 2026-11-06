@@ -329,9 +329,9 @@ export async function signFlashOrderTypedData(
       primaryType: parsed.primaryType,
       message,
     });
-  } catch (err) {
-    console.warn("Agent wallet typed data signing fallback:", err);
-    return `0x${Array.from({ length: 130 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
+  } catch (err: any) {
+    console.error("Agent wallet typed data signing error:", err);
+    throw new Error(`Failed to sign typed data: ${err?.message || "Unknown error"}`);
   }
 }
 
