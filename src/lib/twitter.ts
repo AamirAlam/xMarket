@@ -52,7 +52,7 @@ export async function fetchLatestTweetsForHandle({
   try {
     const feedRes = await fetch(`https://fxtwitter.com/${cleanHandle}/feed.xml`, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; PumpIt/1.0; +https://ethglobal.com)",
+        "User-Agent": "Mozilla/5.0 (compatible; xMarket/1.0; +https://ethglobal.com)",
       },
       next: { revalidate: 0 },
     });

@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PumpIt - Event-Driven Trading Agent",
+  title: "xMarket - Event-Driven Trading Agent",
   description: "Autonomous onchain intent trading powered by Verifiable 0G Private Computer inference & Definitive Flash Advanced Orders.",
   icons: {
     icon: [

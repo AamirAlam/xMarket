@@ -66,7 +66,7 @@ export default function LandingPage() {
               <PumpItLogo className="w-4.5 h-4.5" size={18} />
             </div>
             <span className="font-bold text-xl tracking-tight text-slate-900 font-sans">
-              Pump<span className="text-blue-600">It</span>
+              x<span className="text-blue-600">Market</span>
             </span>
           </Link>
 
@@ -100,7 +100,7 @@ export default function LandingPage() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 leading-[1.14] font-sans">
             Saylor to Trump,<br />
             <span className="text-blue-600 whitespace-nowrap">
-              Everyone trades on PumpIt.
+              Everyone trades on xMarket.
             </span>
           </h1>
 
@@ -221,7 +221,7 @@ export default function LandingPage() {
               <PumpItLogo className="w-3.5 h-3.5" size={14} />
             </div>
             <span className="font-bold text-slate-900">
-              Pump<span className="text-blue-600">It</span>
+              x<span className="text-blue-600">Market</span>
             </span>
             <span>• The Event-Driven Trading Protocol</span>
           </div>

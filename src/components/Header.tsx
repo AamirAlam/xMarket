@@ -28,7 +28,7 @@ export function Header({
             <PumpItLogo className="w-4.5 h-4.5" size={18} />
           </div>
           <span className="font-bold text-xl sm:text-2xl tracking-tight text-slate-900 font-sans hover:opacity-90 transition">
-            Pump<span className="text-blue-600">It</span>
+            x<span className="text-blue-600">Market</span>
           </span>
         </Link>
 

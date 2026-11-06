@@ -43,3 +43,5 @@ export function PumpItLogo({ className = "w-5 h-5", size = 20 }: PumpItLogoProps
     </svg>
   );
 }
+
+export { PumpItLogo as XMarketLogo };
