@@ -71,20 +71,23 @@ export interface SmartAccountPolicy {
   allowedMethods: string[];
   spendingCapUsdc: number;
   sessionExpiry: number;
+  deductionMode?: string;
 }
 
 export interface AgentWalletInfo {
-  address: string; // The Counterfactual Smart Account Address (Safe / ERC-4337 on Arbitrum)
-  sessionKeyAddress: string; // Ephemeral Session Key Address authorized by Smart Account
+  address: string; // The Counterfactual Smart Account / Agent Session Address on Arbitrum
+  sessionKeyAddress: string; // Ephemeral Session Key Address authorized by Main Wallet
   privateKey?: string; // Private key of ephemeral session key (stored client-side)
-  masterController: string; // Owner with 100% custody (User MetaMask EOA)
+  masterController: string; // The Main Connected Wallet (Funder & 100% Custody Owner)
   allocatedBudgetUsdc: number;
+  fundingMode?: "DIRECT_MAIN_WALLET_DELEGATION" | "SMART_ACCOUNT_ESCROW";
+  manualFundingRequiredUsdc?: number; // 0.00 (Zero manual transfer needed)
   status: "ARMED" | "ACTIVE" | "SETTLED" | "REVOKED";
   createdAt: string;
   explorerUrl: string;
   delegationSignature?: string;
   sessionExpiry?: number;
-  accountType: "ERC4337_SMART_ACCOUNT" | "SAFE_SESSION_MODULE";
+  accountType: "ERC4337_SMART_ACCOUNT" | "SAFE_SESSION_MODULE" | "DELEGATED_MAIN_WALLET_AGENT";
   policy?: SmartAccountPolicy;
 }
 
@@ -134,4 +137,47 @@ export interface AuditExecutionRecord {
   order?: FlashOrderResult;
   status: "EXECUTED" | "SKIPPED_THRESHOLD" | "FAILED";
   reason: string;
+}
+
+export type AgentTradeType =
+  | "ENTRY_BUY"
+  | "EXIT_TAKE_PROFIT"
+  | "EXIT_STOP_LOSS"
+  | "EXIT_SELL"
+  | "SWEEP";
+
+export interface AgentTradeRecord {
+  id: string;
+  positionId: string;
+  eventName: string;
+  targetHandle: string;
+  persona?: string;
+  avatar?: string;
+  targetAsset: string;
+  contraAsset: string;
+  tradeType: AgentTradeType;
+  side: "LONG" | "SHORT";
+  orderType: OrderType;
+  sizeUsdc: number;
+  price: number;
+  exitPrice?: number;
+  pnlUsd?: number;
+  pnlPct?: number;
+  status: "FILLED" | "SETTLED" | "OPEN" | "SWEPT";
+  txHash: string;
+  explorerUrl: string;
+  agentWalletAddress?: string;
+  masterController?: string;
+  triggeredTweet?: string;
+  zeroGProofId?: string;
+  createdAt: string;
+}
+
+export interface WalletBalances {
+  eth: number;
+  usdc: number;
+  totalUsd: number;
+  ethPriceUsd: number;
+  isLoading: boolean;
+  lastUpdated: string;
 }

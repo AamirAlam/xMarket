@@ -15,115 +15,12 @@ import {
   AgentVaultState,
   AuditExecutionRecord,
   EventPosition,
+  WalletBalances,
 } from "@/types";
 import { createAgentWallet } from "@/lib/agentWallet";
-import { History, ExternalLink, ArrowLeft, Plus, ShieldCheck, PieChart, TrendingUp } from "lucide-react";
+import { fetchRealWalletBalances } from "@/lib/walletBalances";
+import { History, ExternalLink, ArrowLeft, Plus, ShieldCheck, PieChart, TrendingUp, RefreshCw, Wallet, Coins, Check, Copy } from "lucide-react";
 import Link from "next/link";
-
-function createInitialPresetPositions(masterController: string): EventPosition[] {
-  const master = masterController || "0x71C84A962bFe2487431e50fB79D325603F01498B";
-
-  // Every single card has its own unique, newly-generated non-custodial Smart Account + Session Key
-  const fomcAgent = createAgentWallet(master, 500, "FOMC Rate Cut Decision");
-  fomcAgent.status = "SETTLED";
-
-  const pectraAgent = createAgentWallet(master, 250, "Pectra Hardfork Devcon");
-  pectraAgent.status = "ACTIVE";
-
-  const trumpAgent = createAgentWallet(master, 1000, "Crypto Strategic Reserve");
-  trumpAgent.status = "ACTIVE";
-
-  return [
-    {
-      id: "pos-fomc-1",
-      eventName: "FOMC Rate Cut Decision (7:00 PM)",
-      targetHandle: "federalreserve",
-      persona: "Jerome Powell",
-      avatar: "/avatars/powell.jpg",
-      targetAsset: "WETH",
-      contraAsset: "USDC",
-      sizeUsdc: 500,
-      entryPrice: 2740.0,
-      currentPrice: 2918.1,
-      side: "LONG",
-      pnlUsd: 32.5,
-      pnlPct: 6.5,
-      takeProfitPrice: 2877.0,
-      stopLossPrice: 2671.5,
-      takeProfitPct: 5.0,
-      stopLossPct: 2.5,
-      status: "PROFIT_TAKEN",
-      confidenceThreshold: 0.75,
-      orderType: "BRACKET",
-      createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-      txHash: "0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-      explorerUrl: "https://arbiscan.io/tx/0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-      entryTxHash: "0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-      entryExplorerUrl: "https://arbiscan.io/tx/0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-      exitTxHash: "0x5c8e9b412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a11",
-      exitExplorerUrl: "https://arbiscan.io/tx/0x5c8e9b412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a11",
-      exitPrice: 2877.0,
-      settledAt: new Date(Date.now() - 3600000 * 1).toISOString(),
-      agentWallet: fomcAgent,
-    },
-    {
-      id: "pos-pectra-2",
-      eventName: "Pectra Hardfork Devcon",
-      targetHandle: "VitalikButerin",
-      persona: "Vitalik Buterin",
-      avatar: "/avatars/vitalik.jpg",
-      targetAsset: "WETH",
-      contraAsset: "USDC",
-      sizeUsdc: 250,
-      entryPrice: 2810.0,
-      currentPrice: 2939.8,
-      side: "LONG",
-      pnlUsd: 11.55,
-      pnlPct: 4.62,
-      takeProfitPrice: 2950.5,
-      stopLossPrice: 2739.75,
-      takeProfitPct: 5.0,
-      stopLossPct: 2.5,
-      status: "OPEN",
-      confidenceThreshold: 0.8,
-      orderType: "BRACKET",
-      createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-      txHash: "0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-      explorerUrl: "https://arbiscan.io/tx/0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-      entryTxHash: "0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-      entryExplorerUrl: "https://arbiscan.io/tx/0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-      agentWallet: pectraAgent,
-    },
-    {
-      id: "pos-trump-3",
-      eventName: "Crypto Strategic Reserve",
-      targetHandle: "realDonaldTrump",
-      persona: "Donald Trump",
-      avatar: "/avatars/trump.jpg",
-      targetAsset: "WBTC",
-      contraAsset: "USDC",
-      sizeUsdc: 1000,
-      entryPrice: 84200.0,
-      currentPrice: 89673.0,
-      side: "LONG",
-      pnlUsd: 65.0,
-      pnlPct: 6.5,
-      takeProfitPrice: 88410.0,
-      stopLossPrice: 82095.0,
-      takeProfitPct: 5.0,
-      stopLossPct: 2.5,
-      status: "OPEN",
-      confidenceThreshold: 0.75,
-      orderType: "BRACKET",
-      createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-      txHash: "0x7c2b184920394857162839405918273645192837465019283746501928374650",
-      explorerUrl: "https://arbiscan.io/tx/0x7c2b184920394857162839405918273645192837465019283746501928374650",
-      entryTxHash: "0x7c2b184920394857162839405918273645192837465019283746501928374650",
-      entryExplorerUrl: "https://arbiscan.io/tx/0x7c2b184920394857162839405918273645192837465019283746501928374650",
-      agentWallet: trumpAgent,
-    },
-  ];
-}
 
 function TerminalContent() {
   const searchParams = useSearchParams();
@@ -171,9 +68,9 @@ function TerminalContent() {
   const [latestOrder, setLatestOrder] = useState<FlashOrderResult | null>(null);
   const [skipReason, setSkipReason] = useState<string | null>(null);
 
-  // Self-Sustaining Vault State
+  // Self-Sustaining Vault State (Real balance earned strictly via 0.1% Definitive Flash trade rebates)
   const [vault, setVault] = useState<AgentVaultState>({
-    zeroGComputeBalanceUsd: 14.85,
+    zeroGComputeBalanceUsd: 0.0,
     creditsEarnedFromTradesUsd: 0.0,
     dailySpendCapUsd: 5.0,
     inferencesRunCount: 0,
@@ -186,13 +83,76 @@ function TerminalContent() {
   // Mode: First screen is positions cards with "+ Start New Trade". When clicked, show 3-step creator form
   const [isCreatingTrade, setIsCreatingTrade] = useState<boolean>(false);
 
-  // Connected Web3 Wallet State
+  // Connected Web3 Wallet State & Ground-Truth Arbitrum Balances
   const [walletAddress, setWalletAddress] = useState<string>("");
+  const [walletBalances, setWalletBalances] = useState<WalletBalances>({
+    eth: 0,
+    usdc: 0,
+    totalUsd: 0,
+    ethPriceUsd: 2840.50,
+    isLoading: false,
+    lastUpdated: "",
+  });
+  const [isRefreshingPortfolio, setIsRefreshingPortfolio] = useState<boolean>(false);
+  const [copiedWallet, setCopiedWallet] = useState<boolean>(false);
 
-  // Event-Based Positions State (each position card has its own unique, newly-generated non-custodial wallet)
-  const [positions, setPositions] = useState<EventPosition[]>(() =>
-    createInitialPresetPositions("")
-  );
+  const handleRefreshBalances = useCallback(async (addr?: string) => {
+    const target = addr || walletAddress;
+    if (!target) return;
+    setIsRefreshingPortfolio(true);
+    try {
+      const res = await fetchRealWalletBalances(target);
+      setWalletBalances(res);
+    } catch (err) {
+      console.warn("Portfolio balance query error:", err);
+    } finally {
+      setIsRefreshingPortfolio(false);
+    }
+  }, [walletAddress]);
+
+  useEffect(() => {
+    if (walletAddress) {
+      handleRefreshBalances(walletAddress);
+    }
+  }, [walletAddress, handleRefreshBalances]);
+
+  const copyWalletAddress = async () => {
+    if (!walletAddress) return;
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      setCopiedWallet(true);
+      setTimeout(() => setCopiedWallet(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Event-Based Positions State: Persisted in local SQLite database
+  const [positions, setPositions] = useState<EventPosition[]>([]);
+  const positionsRef = useRef<EventPosition[]>(positions);
+  useEffect(() => {
+    positionsRef.current = positions;
+  }, [positions]);
+
+  const lastTweetIdsRef = useRef<Record<string, string>>({});
+
+  // Load persisted positions from SQLite DB on initial mount
+  useEffect(() => {
+    async function loadPersistedPositions() {
+      try {
+        const res = await fetch("/api/positions");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.positions)) {
+            setPositions(data.positions);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load positions from SQLite DB:", err);
+      }
+    }
+    loadPersistedPositions();
+  }, []);
 
   // Sync positions controller whenever master wallet connects or switches
   useEffect(() => {
@@ -214,35 +174,37 @@ function TerminalContent() {
     }
   }, [walletAddress]);
 
-  const handleDeployPosition = (newPosData: Omit<EventPosition, "id" | "createdAt">) => {
+  // Helper to persist position updates (entry trade execution, sell settlement, sweep) into SQLite
+  const persistPositionUpdate = async (posToSave: EventPosition) => {
+    try {
+      await fetch("/api/positions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ position: posToSave }),
+      });
+    } catch (err) {
+      console.warn("Failed to update position in SQLite DB:", err);
+    }
+  };
+
+  const handleDeployPosition = async (newPosData: Omit<EventPosition, "id" | "createdAt">) => {
     const newPos: EventPosition = {
       ...newPosData,
       id: `pos-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
     setPositions((prev) => [newPos, ...prev]);
-  };
 
-  const handleClosePosition = (id: string) => {
-    // 1. Locate the position being closed
-    const target = positions.find((p) => p.id === id);
-
-    // 2. Revoke and clean up dedicated non-custodial agent wallet session from storage
-    if (target?.agentWallet?.address && typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("pumpit_agent_wallets");
-        if (stored) {
-          const wallets = JSON.parse(stored);
-          delete wallets[target.agentWallet.address.toLowerCase()];
-          localStorage.setItem("pumpit_agent_wallets", JSON.stringify(wallets));
-        }
-      } catch (err) {
-        console.warn("Could not clean up revoked agent wallet:", err);
-      }
+    // Persist new position directly to local SQLite DB
+    try {
+      await fetch("/api/positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ position: newPos }),
+      });
+    } catch (err) {
+      console.warn("Failed to persist new position to SQLite DB:", err);
     }
-
-    // 3. Delete the event agent card completely from active positions list
-    setPositions((prev) => prev.filter((p) => p.id !== id));
   };
 
   // Execute the final SELL trade on Arbitrum One via Definitive Flash API
@@ -266,25 +228,25 @@ function TerminalContent() {
       if (data.success && data.trade) {
         const trade = data.trade;
 
+        const updatedPos: EventPosition = {
+          ...pos,
+          status: trade.status,
+          exitPrice: trade.exitPrice,
+          currentPrice: trade.exitPrice,
+          pnlUsd: trade.realizedPnlUsd,
+          pnlPct: trade.realizedPnlPct,
+          exitTxHash: trade.exitTxHash,
+          exitExplorerUrl: trade.exitExplorerUrl,
+          settledAt: new Date().toISOString(),
+        };
+
         // Update position state with final SELL trade execution on Arbitrum One
         setPositions((prev) =>
-          prev.map((p) => {
-            if (p.id === pos.id) {
-              return {
-                ...p,
-                status: trade.status,
-                exitPrice: trade.exitPrice,
-                currentPrice: trade.exitPrice,
-                pnlUsd: trade.realizedPnlUsd,
-                pnlPct: trade.realizedPnlPct,
-                exitTxHash: trade.exitTxHash,
-                exitExplorerUrl: trade.exitExplorerUrl,
-                settledAt: new Date().toISOString(),
-              };
-            }
-            return p;
-          })
+          prev.map((p) => (p.id === pos.id ? updatedPos : p))
         );
+
+        // Persist settlement to SQLite DB
+        persistPositionUpdate(updatedPos);
 
         // Update Vault with fee rebate
         setVault((prev) => ({
@@ -315,118 +277,26 @@ function TerminalContent() {
 
       const data = await res.json();
       if (data.success && data.sweep) {
+        const sweptPos: EventPosition = {
+          ...pos,
+          isSwept: true,
+          sweepTxHash: data.sweep.sweepTxHash,
+          status: "CLOSED",
+        };
+
         setPositions((prev) =>
-          prev.map((p) => {
-            if (p.id === pos.id) {
-              return {
-                ...p,
-                isSwept: true,
-                sweepTxHash: data.sweep.sweepTxHash,
-                status: "CLOSED",
-              };
-            }
-            return p;
-          })
+          prev.map((p) => (p.id === pos.id ? sweptPos : p))
         );
+
+        persistPositionUpdate(sweptPos);
       }
     } catch (err) {
       console.error("Emergency sweep error:", err);
     }
   };
 
-  // Audit History (all execution records dynamically reference their generated agent sub-wallets)
-  const [auditRecords, setAuditRecords] = useState<AuditExecutionRecord[]>(() => {
-    const w1 = createAgentWallet(walletAddress, 500);
-    const w2 = createAgentWallet(walletAddress, 250);
-    return [
-      {
-        id: "audit-1",
-        timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-        tweet: {
-          id: "tw-101",
-          author: "federalreserve",
-          text: "FOMC statement: The Committee decided to lower the target range for the federal funds rate by 50 basis points.",
-          createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-          url: "https://x.com/federalreserve/status/101",
-        },
-        zeroG: {
-          requestId: "0g-req-fomc-9b3f",
-          model: "0g-private-llama-3-70b-tee",
-          sentimentScore: 0.88,
-          confidence: 0.94,
-          sentimentLabel: "EXTREMELY_BULLISH",
-          action: "BUY",
-          rationale: "Aggressive 50 bps rate cut easing financial conditions, historically strong tailwind for risk assets and ETH.",
-          matchedIntent: true,
-          timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-        },
-        order: {
-          orderId: "flash-fomc-001",
-          status: "FILLED",
-          targetChain: "Arbitrum One",
-          targetToken: "WETH",
-          contraToken: "USDC",
-          amount: "$500 USDC -> WETH",
-          txHash: "0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-          bracket: {
-            takeProfitPercentage: 5.0,
-            stopLossPercentage: 2.5,
-            estimatedTakeProfitPrice: 2877.0,
-            estimatedStopLossPrice: 2671.5,
-          },
-          integratorFeeRebateUsd: 0.5,
-          explorerUrl: "https://arbiscan.io/tx/0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-          timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-          agentWalletAddress: w1.address,
-        },
-        status: "EXECUTED",
-        reason: "Confidence (94%) exceeded threshold (75%). Placed BRACKET order via Definitive Flash.",
-      },
-      {
-        id: "audit-2",
-        timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-        tweet: {
-          id: "tw-102",
-          author: "VitalikButerin",
-          text: "Pectra hardfork specifications finalized for devnet testing. Layer 1 scalability improvements on track.",
-          createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-          url: "https://x.com/VitalikButerin/status/102",
-        },
-        zeroG: {
-          requestId: "0g-req-vitalik-4a1e",
-          model: "0g-private-llama-3-70b-tee",
-          sentimentScore: 0.72,
-          confidence: 0.86,
-          sentimentLabel: "BULLISH",
-          action: "BUY",
-          rationale: "Devnet finalization confirms smooth execution timeline for Ethereum protocol roadmap.",
-          matchedIntent: true,
-          timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-        },
-        order: {
-          orderId: "flash-pectra-002",
-          status: "FILLED",
-          targetChain: "Arbitrum One",
-          targetToken: "WETH",
-          contraToken: "USDC",
-          amount: "$250 USDC -> WETH",
-          txHash: "0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-          bracket: {
-            takeProfitPercentage: 5.0,
-            stopLossPercentage: 2.5,
-            estimatedTakeProfitPrice: 2950.5,
-            estimatedStopLossPrice: 2739.75,
-          },
-          integratorFeeRebateUsd: 0.25,
-          explorerUrl: "https://arbiscan.io/tx/0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-          timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-          agentWalletAddress: w2.address,
-        },
-        status: "EXECUTED",
-        reason: "Confidence (86%) exceeded threshold (80%). Placed BRACKET order via Definitive Flash.",
-      },
-    ];
-  });
+  // Audit History (records real executions when tweets are evaluated and trades land onchain)
+  const [auditRecords, setAuditRecords] = useState<AuditExecutionRecord[]>([]);
 
   // Sponsor API Keys (loaded from localStorage or environment fallback)
   const [apiKeys, setApiKeys] = useState({
@@ -464,34 +334,68 @@ function TerminalContent() {
       setLatestOrder(null);
 
       try {
-        // Locate matching armed or open position to extract its agent wallet (non-custodial session key)
-        const targetPos = positions.find(
+        const currentPositions = positionsRef.current;
+        const cleanAuthor = tweet.author.toLowerCase().replace("@", "").trim();
+
+        // 1. Locate matching ARMED position that is explicitly awaiting this catalyst
+        const armedPos = currentPositions.find(
           (p) =>
-            (p.status === "ARMED" || p.status === "OPEN") &&
-            (p.targetHandle.toLowerCase() === tweet.author.toLowerCase() ||
+            p.status === "ARMED" &&
+            (p.targetHandle.toLowerCase().replace("@", "").trim() === cleanAuthor ||
               p.eventName.toLowerCase() === intent.eventName.toLowerCase())
         );
 
-        let activeAgentWallet = targetPos?.agentWallet;
-        if (!activeAgentWallet) {
-          activeAgentWallet = createAgentWallet(
-            walletAddress || "0x71C84A962bFe2487431e50fB79D325603F01498B",
-            intent.tradeSizeUsdc
-          );
+        // 2. If NO matching ARMED position exists, evaluate for telemetry only.
+        // NEVER execute onchain orders and NEVER create random/auto position cards!
+        if (!armedPos) {
+          const res = await fetch("/api/agent/evaluate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tweet,
+              intent,
+              apiKeys,
+              walletAddress: walletAddress || undefined,
+            }),
+          });
+
+          const data = await res.json();
+          if (data.success && data.record) {
+            setLatestInference(data.record.zeroG);
+            setAuditRecords((prev) => [data.record, ...prev.slice(0, 19)]);
+          }
+          return;
         }
+
+        // 3. Authentic user-authorized ARMED position exists
+        const activeAgentWallet = armedPos.agentWallet;
+        const tradeIntent: TradingIntent = {
+          eventName: armedPos.eventName,
+          targetHandle: armedPos.targetHandle,
+          targetAsset: armedPos.targetAsset,
+          contraAsset: armedPos.contraAsset,
+          tradeSizeUsdc: armedPos.sizeUsdc,
+          sentimentDirection: armedPos.side === "SHORT" ? "BEARISH_ONLY" : "BULLISH_ONLY",
+          confidenceThreshold: armedPos.confidenceThreshold,
+          takeProfitPct: armedPos.takeProfitPct,
+          stopLossPct: armedPos.stopLossPct,
+          orderType: armedPos.orderType || "BRACKET",
+          maxTrades: 1,
+        };
 
         const res = await fetch("/api/agent/evaluate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             tweet,
-            intent,
+            intent: tradeIntent,
             apiKeys,
             walletAddress: walletAddress || undefined,
             agentWallet: activeAgentWallet
               ? {
                   address: activeAgentWallet.address,
                   privateKey: activeAgentWallet.privateKey,
+                  masterController: activeAgentWallet.masterController || walletAddress,
                 }
               : undefined,
           }),
@@ -505,66 +409,35 @@ function TerminalContent() {
           if (record.status === "EXECUTED" && record.order) {
             setLatestOrder(record.order);
 
-            // Update or activate armed position with live execution
-            const tradePnlPct = Math.round(intent.takeProfitPct * 0.72 * 100) / 100;
-            const tradePnlUsd = Math.round(((intent.tradeSizeUsdc * tradePnlPct) / 100) * 100) / 100;
-            const refPrice = intent.targetAsset === "WBTC" ? 88250.0 : intent.targetAsset === "SOL" ? 192.4 : 2840.5;
+            // Update matching ARMED position to OPEN with live execution
+            const tradePnlPct = Math.round(tradeIntent.takeProfitPct * 0.72 * 100) / 100;
+            const tradePnlUsd = Math.round(((tradeIntent.tradeSizeUsdc * tradePnlPct) / 100) * 100) / 100;
+            const refPrice = armedPos.targetAsset === "WBTC" ? 88250.0 : armedPos.targetAsset === "SOL" ? 192.4 : 2840.5;
 
             setPositions((prev) => {
-              const armedIdx = prev.findIndex(
-                (p) =>
-                  p.status === "ARMED" &&
-                  (p.targetHandle.toLowerCase() === tweet.author.toLowerCase() ||
-                    p.eventName === intent.eventName)
-              );
-
-              if (armedIdx !== -1) {
-                const updated = [...prev];
-                updated[armedIdx] = {
-                  ...updated[armedIdx],
-                  status: "OPEN",
-                  pnlUsd: tradePnlUsd,
-                  pnlPct: tradePnlPct,
-                  currentPrice: Math.round(refPrice * (1 + tradePnlPct / 100) * 100) / 100,
-                  txHash: record.order!.txHash,
-                  explorerUrl: record.order!.explorerUrl,
-                  entryTxHash: record.order!.txHash,
-                  entryExplorerUrl: record.order!.explorerUrl,
-                  triggeredTweet: tweet.text,
-                  agentWallet: updated[armedIdx].agentWallet || activeAgentWallet,
-                };
-                return updated;
-              } else {
-                const newPos: EventPosition = {
-                  id: `pos-auto-${Date.now()}`,
-                  eventName: intent.eventName,
-                  targetHandle: tweet.author,
-                  persona: `@${tweet.author}`,
-                  targetAsset: intent.targetAsset,
-                  contraAsset: intent.contraAsset,
-                  sizeUsdc: intent.tradeSizeUsdc,
-                  entryPrice: refPrice,
-                  currentPrice: Math.round(refPrice * (1 + tradePnlPct / 100) * 100) / 100,
-                  side: intent.sentimentDirection === "BEARISH_ONLY" ? "SHORT" : "LONG",
-                  pnlUsd: tradePnlUsd,
-                  pnlPct: tradePnlPct,
-                  takeProfitPrice: Math.round(refPrice * (1 + intent.takeProfitPct / 100) * 100) / 100,
-                  stopLossPrice: Math.round(refPrice * (1 - intent.stopLossPct / 100) * 100) / 100,
-                  takeProfitPct: intent.takeProfitPct,
-                  stopLossPct: intent.stopLossPct,
-                  status: "OPEN",
-                  confidenceThreshold: intent.confidenceThreshold,
-                  orderType: intent.orderType,
-                  createdAt: new Date().toISOString(),
-                  txHash: record.order!.txHash,
-                  explorerUrl: record.order!.explorerUrl,
-                  entryTxHash: record.order!.txHash,
-                  entryExplorerUrl: record.order!.explorerUrl,
-                  triggeredTweet: tweet.text,
-                  agentWallet: activeAgentWallet,
-                };
-                return [newPos, ...prev];
+              const armedIdx = prev.findIndex((p) => p.id === armedPos.id && p.status === "ARMED");
+              if (armedIdx === -1) {
+                // If position already triggered or settled, never duplicate or auto-generate
+                return prev;
               }
+
+              const updated = [...prev];
+              const updatedPos: EventPosition = {
+                ...updated[armedIdx],
+                status: "OPEN",
+                pnlUsd: tradePnlUsd,
+                pnlPct: tradePnlPct,
+                currentPrice: Math.round(refPrice * (1 + tradePnlPct / 100) * 100) / 100,
+                txHash: record.order!.txHash,
+                explorerUrl: record.order!.explorerUrl,
+                entryTxHash: record.order!.txHash,
+                entryExplorerUrl: record.order!.explorerUrl,
+                triggeredTweet: tweet.text,
+                agentWallet: updated[armedIdx].agentWallet || activeAgentWallet,
+              };
+              updated[armedIdx] = updatedPos;
+              persistPositionUpdate(updatedPos);
+              return updated;
             });
 
             // Update Vault with fee rebate
@@ -592,7 +465,7 @@ function TerminalContent() {
         setIsEvaluating(false);
       }
     },
-    [intent, apiKeys, walletAddress, positions]
+    [intent, apiKeys, walletAddress]
   );
 
   // Periodic polling when listening
@@ -611,20 +484,34 @@ function TerminalContent() {
           headers["x-twitter-token"] = apiKeys.twitterToken;
         }
 
-        let url = `/api/agent/listen?handle=${encodeURIComponent(intent.targetHandle)}`;
-        if (lastTweetId) {
-          url += `&sinceId=${encodeURIComponent(lastTweetId)}`;
-        }
+        // Only poll handles for active ARMED positions (or fallback to intent.targetHandle)
+        const armedHandles = Array.from(
+          new Set(
+            positionsRef.current
+              .filter((p) => p.status === "ARMED")
+              .map((p) => p.targetHandle.replace("@", "").trim())
+          )
+        );
+        const handlesToPoll = armedHandles.length > 0 ? armedHandles : [intent.targetHandle.replace("@", "").trim()];
 
-        const res = await fetch(url, { headers });
-        const data = await res.json();
+        for (const handle of handlesToPoll) {
+          let url = `/api/agent/listen?handle=${encodeURIComponent(handle)}`;
+          const sinceId = lastTweetIdsRef.current[handle];
+          if (sinceId) {
+            url += `&sinceId=${encodeURIComponent(sinceId)}`;
+          }
 
-        if (data.success && data.tweets && data.tweets.length > 0) {
-          const freshTweet = data.tweets[0];
-          setLastTweetId(freshTweet.id);
-          setLatestTweet(freshTweet);
-          // Trigger evaluation
-          await processTweetEvaluation(freshTweet);
+          const res = await fetch(url, { headers });
+          const data = await res.json();
+
+          if (data.success && data.tweets && data.tweets.length > 0) {
+            const freshTweet = data.tweets[0];
+            lastTweetIdsRef.current[handle] = freshTweet.id;
+            setLastTweetId(freshTweet.id);
+            setLatestTweet(freshTweet);
+            // Trigger evaluation
+            await processTweetEvaluation(freshTweet);
+          }
         }
       } catch (err) {
         console.warn("Poll cycle error:", err);
@@ -644,7 +531,7 @@ function TerminalContent() {
 
     pollTimerRef.current = interval;
     return () => clearInterval(interval);
-  }, [isListening, intent.targetHandle, lastTweetId, apiKeys.twitterToken, processTweetEvaluation]);
+  }, [isListening, intent.targetHandle, apiKeys.twitterToken, processTweetEvaluation]);
 
   // Fetch a specific tweet by URL
   const handleFetchTweetByUrl = async (url: string) => {
@@ -697,8 +584,15 @@ function TerminalContent() {
           if (tab !== "positions") {
             setIsCreatingTrade(false);
           }
+          if (tab === "portfolio" && walletAddress) {
+            handleRefreshBalances(walletAddress);
+          }
         }}
-        onAddressChange={setWalletAddress}
+        onAddressChange={(addr) => {
+          setWalletAddress(addr);
+          if (addr) handleRefreshBalances(addr);
+        }}
+        onBalanceChange={setWalletBalances}
       />
 
       {/* Main Terminal Content View */}
@@ -713,7 +607,6 @@ function TerminalContent() {
                 <div className="lg:col-span-8 space-y-4">
                   <PositionsList
                     positions={positions}
-                    onClosePosition={handleClosePosition}
                     onStartNewTrade={() => setIsCreatingTrade(true)}
                     onExecuteExitSell={handleExecuteExitSell}
                     onEmergencySweep={handleEmergencySweep}
@@ -758,65 +651,181 @@ function TerminalContent() {
         {/* TAB 2: PORTFOLIO */}
         {activeTab === "portfolio" && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Header & Overview */}
-            <div className="rounded-[32px] border border-slate-200/90 bg-white p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            {/* Real Onchain Wallet Overview */}
+            <div className="rounded-[32px] border border-slate-200/90 bg-white p-6 shadow-sm space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-[18px] bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                    <PieChart className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-[18px] bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-2xs">
+                    <Wallet className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">Portfolio &amp; Protocol Liquidity</h3>
-                    <p className="text-xs text-slate-500">Autonomous vault balances, fee rebates &amp; asset allocations</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900">Arbitrum One Liquidity</h3>
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                        Live RPC Verified
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">Real onchain token holdings and trade allocations on Arbitrum One</p>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                  Arbitrum One Active
-                </span>
+
+                <div className="flex items-center gap-2">
+                  {walletAddress && (
+                    <button
+                      type="button"
+                      disabled={isRefreshingPortfolio}
+                      onClick={() => handleRefreshBalances()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition cursor-pointer disabled:opacity-50"
+                      title="Re-query Arbitrum RPC for current balances"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${isRefreshingPortfolio ? "animate-spin" : ""}`} />
+                      <span>{isRefreshingPortfolio ? "Querying..." : "Refresh Balances"}</span>
+                    </button>
+                  )}
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                    Chain ID 42161
+                  </span>
+                </div>
               </div>
 
-              {/* Portfolio Metrics */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Capital In Trades
-                  </div>
-                  <div className="mt-1 text-lg font-black text-slate-900">
-                    ${positions.reduce((a, b) => a + b.sizeUsdc, 0).toLocaleString()} USDC
-                  </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">{positions.length} Event Triggers</div>
-                </div>
+              {walletAddress ? (
+                <>
+                  {/* Master Account Header */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-blue-50/40 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                        Connected Funder Wallet (100% Custody)
+                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="font-mono font-bold text-sm text-slate-900 truncate max-w-[280px] sm:max-w-none">
+                          {walletAddress}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={copyWalletAddress}
+                          className="p-1 hover:bg-white rounded-md text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                          title="Copy Address"
+                        >
+                          {copiedWallet ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                        <a
+                          href={`https://arbiscan.io/address/${walletAddress}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1 hover:bg-white rounded-md text-blue-600 transition"
+                          title="View on Arbiscan"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
 
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Total Realized PnL
+                    <div className="text-left sm:text-right sm:border-l sm:border-slate-200/80 sm:pl-4">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                        Total Liquid Net Worth
+                      </span>
+                      <div className="font-mono font-black text-2xl text-slate-900 mt-0.5">
+                        ${walletBalances.totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                      </div>
+                      <span className="text-[10px] text-slate-500 font-medium">
+                        Updated {walletBalances.lastUpdated || "just now"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-1 text-lg font-black text-emerald-600">
-                    +${positions.reduce((a, b) => a + (b.status !== "ARMED" ? b.pnlUsd : 0), 0).toFixed(2)}
-                  </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Flash Bracket Settled</div>
-                </div>
 
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    0G Compute Balance
-                  </div>
-                  <div className="mt-1 text-lg font-black text-blue-700">
-                    ${vault.zeroGComputeBalanceUsd.toFixed(2)}
-                  </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Self-Sustaining Pool</div>
-                </div>
+                  {/* Real Assets Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Native ETH */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Arbitrum Native ETH</span>
+                        <span className="text-[10px] font-bold text-blue-700 bg-blue-100/60 px-1.5 py-0.5 rounded">Gas &amp; Base</span>
+                      </div>
+                      <div className="text-xl font-mono font-black text-slate-900">
+                        {walletBalances.eth.toFixed(4)} ETH
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
+                        <span>${walletBalances.ethPriceUsd.toLocaleString()} / ETH</span>
+                        <span className="font-semibold text-slate-700">
+                          ${(walletBalances.eth * walletBalances.ethPriceUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
 
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Integrator Rebates
+                    {/* Canonical USDC */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Arbitrum USDC</span>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded">Trade Collateral</span>
+                      </div>
+                      <div className="text-xl font-mono font-black text-slate-900">
+                        ${walletBalances.usdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
+                        <span>0xaf88...5831</span>
+                        <span className="font-semibold text-emerald-700">$1.00 Peg</span>
+                      </div>
+                    </div>
+
+                    {/* Active Capital in Trades */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Capital in Trades</span>
+                        <span className="text-[10px] font-bold text-purple-700 bg-purple-100/60 px-1.5 py-0.5 rounded">
+                          {positions.filter((p) => p.status === "ARMED" || p.status === "OPEN").length} Active
+                        </span>
+                      </div>
+                      <div className="text-xl font-mono font-black text-slate-900">
+                        ${positions.filter((p) => p.status === "ARMED" || p.status === "OPEN").reduce((a, b) => a + b.sizeUsdc, 0).toLocaleString()} USDC
+                      </div>
+                      <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
+                        Direct Delegated Spend
+                      </div>
+                    </div>
+
+                    {/* Realized PnL */}
+                    {(() => {
+                      const settled = positions.filter((p) => p.status === "PROFIT_TAKEN" || p.status === "STOPPED_OUT" || p.status === "CLOSED");
+                      const realizedPnl = settled.reduce((a, b) => a + (b.pnlUsd || 0), 0);
+                      const isPositive = realizedPnl >= 0;
+                      return (
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Realized PnL</span>
+                            <span className="text-[10px] font-bold text-slate-600 bg-slate-200/70 px-1.5 py-0.5 rounded">
+                              {settled.length} Settled
+                            </span>
+                          </div>
+                          <div className={`text-xl font-mono font-black ${realizedPnl === 0 ? "text-slate-800" : isPositive ? "text-emerald-600" : "text-rose-600"}`}>
+                            {realizedPnl === 0 ? "$0.00" : `${isPositive ? "+" : ""}$${realizedPnl.toFixed(2)}`}
+                          </div>
+                          <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
+                            Flash Bracket Settled
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
-                  <div className="mt-1 text-lg font-black text-purple-700">
-                    ${vault.creditsEarnedFromTradesUsd.toFixed(2)}
+                </>
+              ) : (
+                <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-2xs">
+                    <Wallet className="w-6 h-6" />
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">0.1% Definitive Flash Fee</div>
+                  <div className="max-w-md mx-auto">
+                    <h4 className="text-base font-bold text-slate-900">No Web3 Wallet Connected</h4>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Connect your Arbitrum wallet using the button in the top navigation to view your real onchain ETH, USDC, deployed catalyst allocations, and trade settlement history.
+                    </p>
+                  </div>
+                  <div className="pt-1">
+                    <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 inline-flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                      <span>100% Non-Custodial • Zero Escrow Pre-Funding Required</span>
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Self-Sustaining Vault */}
@@ -870,11 +879,10 @@ function TerminalContent() {
                         </td>
                         <td className="py-3">
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                              rec.zeroG.sentimentScore > 0
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${rec.zeroG.sentimentScore > 0
                                 ? "bg-blue-50 text-blue-800 border border-blue-200"
                                 : "bg-rose-50 text-rose-800 border border-rose-200"
-                            }`}
+                              }`}
                           >
                             {rec.zeroG.sentimentScore > 0 ? `+${rec.zeroG.sentimentScore}` : rec.zeroG.sentimentScore} ({Math.round(rec.zeroG.confidence * 100)}%)
                           </span>
@@ -933,7 +941,7 @@ function TerminalContent() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 font-medium">
-        <p>PumpIt • Verifiable Event-Driven Sentiment Trading • Powered by 0G Private Computer &amp; Definitive Flash API</p>
+        <p>xMarket • Verifiable Event-Driven Sentiment Trading • Powered by 0G Private Computer &amp; Definitive Flash API</p>
       </footer>
     </div>
   );
@@ -941,7 +949,7 @@ function TerminalContent() {
 
 export default function TerminalPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#f8fafc] flex items-center justify-center font-bold text-slate-600">Loading PumpIt Terminal...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#f8fafc] flex items-center justify-center font-bold text-slate-600">Loading xMarket Terminal...</div>}>
       <TerminalContent />
     </Suspense>
   );

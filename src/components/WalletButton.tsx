@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Wallet, ChevronDown, Check, Copy, ExternalLink, LogOut, X, Sparkles } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Wallet, ChevronDown, Check, Copy, ExternalLink, LogOut, X, Sparkles, RefreshCw, Coins } from "lucide-react";
+import { WalletBalances } from "@/types";
+import { fetchRealWalletBalances } from "@/lib/walletBalances";
 
 interface WalletButtonProps {
   onAddressChange?: (address: string) => void;
+  onBalanceChange?: (balances: WalletBalances) => void;
 }
 
-export function WalletButton({ onAddressChange }: WalletButtonProps) {
+export function WalletButton({ onAddressChange, onBalanceChange }: WalletButtonProps) {
   const [address, setAddress] = useState<string | null>(null);
   const [network, setNetwork] = useState<string>("Arbitrum One");
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
@@ -15,8 +18,35 @@ export function WalletButton({ onAddressChange }: WalletButtonProps) {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [hasInjected, setHasInjected] = useState<boolean>(false);
+  const [isRefreshingBalance, setIsRefreshingBalance] = useState<boolean>(false);
+
+  // Real Wallet Balance State (ETH + USDC converted to USD)
+  const [balanceState, setBalanceState] = useState<WalletBalances>({
+    eth: 0,
+    usdc: 0,
+    totalUsd: 0,
+    ethPriceUsd: 2840.50,
+    isLoading: false,
+    lastUpdated: "",
+  });
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch real onchain balances in USD (Arbitrum native ETH + Arbitrum USDC)
+  const fetchRealWalletBalance = useCallback(async (walletAddr: string) => {
+    if (!walletAddr) return;
+    setIsRefreshingBalance(true);
+
+    try {
+      const res = await fetchRealWalletBalances(walletAddr);
+      setBalanceState(res);
+      onBalanceChange?.(res);
+    } catch (err) {
+      console.warn("Could not fetch real wallet balance:", err);
+    } finally {
+      setIsRefreshingBalance(false);
+    }
+  }, [onBalanceChange]);
 
   // Check for injected provider (e.g. MetaMask, Rabby)
   useEffect(() => {
@@ -35,6 +65,7 @@ export function WalletButton({ onAddressChange }: WalletButtonProps) {
         console.warn("Could not save wallet address", e);
       }
       onAddressChange?.(addr);
+      fetchRealWalletBalance(addr);
     } else {
       try {
         localStorage.removeItem("pumpit_connected_wallet");
@@ -42,8 +73,19 @@ export function WalletButton({ onAddressChange }: WalletButtonProps) {
         console.warn("Could not remove wallet address", e);
       }
       onAddressChange?.("");
+      setBalanceState({ eth: 0, usdc: 0, totalUsd: 0, ethPriceUsd: 2840.50, isLoading: false, lastUpdated: "" });
     }
   };
+
+  // Auto-refresh balance on interval
+  useEffect(() => {
+    if (!address) return;
+    fetchRealWalletBalance(address);
+    const timer = setInterval(() => {
+      fetchRealWalletBalance(address);
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [address, fetchRealWalletBalance]);
 
   // Check stored connection or authorized accounts on mount
   useEffect(() => {
@@ -181,72 +223,115 @@ export function WalletButton({ onAddressChange }: WalletButtonProps) {
   return (
     <>
       {address ? (
-        <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 shadow-xs transition cursor-pointer"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-mono text-slate-700 font-bold">{formatAddress(address)}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-          </button>
+        <div className="flex items-center gap-2" ref={dropdownRef}>
+          {/* Wallet Balance Badge on Navbar */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200/90 bg-white shadow-2xs">
+            <Coins className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="text-xs font-mono font-black text-slate-900 leading-none">
+              {balanceState.isLoading ? (
+                <span className="text-slate-400 font-normal">Loading...</span>
+              ) : (
+                `$${balanceState.totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              )}
+            </span>
+          </div>
 
-          {/* Dropdown Menu */}
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white border border-slate-200/90 shadow-xl p-4 z-50 space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-bold text-slate-800">Connected</span>
-                </div>
-                <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                  {network}
-                </span>
-              </div>
+          <div className="relative">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 shadow-xs transition cursor-pointer"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-mono text-slate-700 font-bold">{formatAddress(address)}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
 
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">
-                  Wallet Address
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/70">
-                  <span className="text-xs font-mono text-slate-700 truncate mr-2">
-                    {address}
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white border border-slate-200/90 shadow-xl p-4 z-50 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-xs font-bold text-slate-800">Connected</span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                    {network}
                   </span>
-                  <button
-                    onClick={copyAddress}
-                    className="text-slate-500 hover:text-slate-800 transition p-1 hover:bg-slate-200 rounded-lg cursor-pointer"
-                    title="Copy Address"
+                </div>
+
+                {/* Balance Breakdown Card */}
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-mono font-black text-slate-900 leading-none">
+                      ${balanceState.totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fetchRealWalletBalance(address)}
+                      disabled={isRefreshingBalance}
+                      className="text-slate-400 hover:text-blue-600 transition p-1 hover:bg-white rounded cursor-pointer disabled:opacity-50"
+                      title="Refresh on-chain balance"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingBalance ? "animate-spin text-blue-600" : ""}`} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-200/60 text-[11px]">
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Arbitrum ETH</span>
+                      <span className="font-mono font-semibold text-slate-800">{balanceState.eth.toFixed(4)} ETH</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Arbitrum USDC</span>
+                      <span className="font-mono font-semibold text-slate-800">{balanceState.usdc.toFixed(2)} USDC</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">
+                    Wallet Address
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/70">
+                    <span className="text-xs font-mono text-slate-700 truncate mr-2">
+                      {address}
+                    </span>
+                    <button
+                      onClick={copyAddress}
+                      className="text-slate-500 hover:text-slate-800 transition p-1 hover:bg-slate-200 rounded-lg cursor-pointer"
+                      title="Copy Address"
+                    >
+                      {copied ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-1 flex flex-col gap-1.5">
+                  <a
+                    href={`https://arbiscan.io/address/${address}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition"
                   >
-                    {copied ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
+                    <span>View on Arbiscan</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+
+                  <button
+                    onClick={disconnectWallet}
+                    className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                  >
+                    <span>Disconnect Wallet</span>
+                    <LogOut className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
-
-              <div className="pt-1 flex flex-col gap-1.5">
-                <a
-                  href={`https://arbiscan.io/address/${address}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition"
-                >
-                  <span>View on Arbiscan</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-
-                <button
-                  onClick={disconnectWallet}
-                  className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                >
-                  <span>Disconnect Wallet</span>
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       ) : (
         <button

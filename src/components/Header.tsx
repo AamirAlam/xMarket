@@ -5,17 +5,20 @@ import Link from "next/link";
 import { PumpItLogo } from "./PumpItLogo";
 import { WalletButton } from "./WalletButton";
 import { TrendingUp, PieChart, History } from "lucide-react";
+import { WalletBalances } from "@/types";
 
 export type TerminalTab = "positions" | "portfolio" | "history";
 
 interface HeaderProps {
   onAddressChange?: (address: string) => void;
+  onBalanceChange?: (balances: WalletBalances) => void;
   activeTab?: TerminalTab;
   onTabChange?: (tab: TerminalTab) => void;
 }
 
 export function Header({
   onAddressChange,
+  onBalanceChange,
   activeTab = "positions",
   onTabChange,
 }: HeaderProps) {
@@ -76,7 +79,7 @@ export function Header({
 
         {/* Right: Wallet Connection Button */}
         <div className="flex items-center shrink-0">
-          <WalletButton onAddressChange={onAddressChange} />
+          <WalletButton onAddressChange={onAddressChange} onBalanceChange={onBalanceChange} />
         </div>
       </div>
     </header>
