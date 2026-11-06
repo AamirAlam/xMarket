@@ -61,9 +61,78 @@ Breaking social events and macroeconomic catalysts move crypto markets within se
 * **Zero Escrow Risk:** Eliminates the requirement for traders to deposit capital into intermediate smart contracts or custodial hot wallets.
 * **On-Demand Settlement:** Traders sign an EIP-712 `DelegatedSpendPermit` authorizing the Definitive Flash Router (`0x4c274C972C40ffD7dBE92a4E01d7C351B27d04B3`) to pull the authorized trade size ($USDC) *only* if the designated catalyst fires. All proceeds from profit-taking and stop-loss exits route directly back into the trader's primary wallet.
 
-### 4. Local Persistence & Onchain State Sync
-* **Implementation:** [`src/lib/db.ts`](file:///Users/aamir/Downloads/eth-mumbai/src/lib/db.ts), [`src/app/api/positions/route.ts`](file:///Users/aamir/Downloads/eth-mumbai/src/app/api/positions/route.ts).
-* **High-Performance SQLite Store:** Armed strategies, executed positions, PnL records, and transaction hashes persist in an embedded SQLite database (`data/xmarket.db`) operating in WAL mode.
+### 4. Real-Time Social Surveillance & Anti-Rate-Limit Queue Engine
+* **Implementation:** [`src/lib/twitter.ts`](file:///Users/aamir/Downloads/eth-mumbai/src/lib/twitter.ts), [`src/app/api/agent/listen/route.ts`](file:///Users/aamir/Downloads/eth-mumbai/src/app/api/agent/listen/route.ts), [`src/components/LiveMonitor.tsx`](file:///Users/aamir/Downloads/eth-mumbai/src/components/LiveMonitor.tsx).
+* **Multi-Agent Sequential Queue:** When multiple agents are actively monitoring different X accounts (`ARMED` or `OPEN`), all targets are processed in a fair round-robin queue with an exact **1,000ms delay** (`1.0s`) enforced between consecutive queries to eliminate HTTP 429 rate limits.
+* **Dual-Layer Anti-Rate-Limit Cache:**
+  - **In-Memory Feed Cache (`CACHE_TTL_MS = 5000`):** Caches parsed feeds per handle for 5 seconds; rapid consecutive checks resolve in `< 2ms` without outbound network calls.
+  - **Server-Side Outbound Throttle (`MIN_OUTBOUND_INTERVAL_MS = 1000`):** Enforces 1-second spacing on upstream external calls to protect rate limit budgets.
+* **Zero-Key Public Ingestion & Twitter v2 Bridge:**
+  - Ingests posts via official Twitter API v2 (when Bearer Token is provided) or seamless public syndication bridges (FxTwitter XML RSS) for any public handle without API keys or credits.
+  - Chronologically sorts tweets descending by publication timestamp (`createdAt`) so the true latest post is evaluated immediately (bypassing retweets or pinned posts).
+  - Uses 64-bit `BigInt` comparison for 19-digit Twitter snowflake IDs (`sinceId`) to eliminate missed tweets.
+* **Interactive Live Radar & Verification:**
+  - [`LiveMonitor.tsx`](file:///Users/aamir/Downloads/eth-mumbai/src/components/LiveMonitor.tsx) provides a real-time event feed with verified badges, relative timestamps, and one-click test chips for `@VitalikButerin`, `@federalreserve`, `@elonmusk`, and `@cz_binance`, plus on-demand single tweet URL ingestion for instant verification.
+
+### 5. Arkiv DB-Chain — Decentralized Sovereign Agent Storage
+* **Implementation:** [`src/lib/arkiv.ts`](file:///Users/aamir/Downloads/eth-mumbai/src/lib/arkiv.ts), [`src/app/api/arkiv/query/route.ts`](file:///Users/aamir/Downloads/eth-mumbai/src/app/api/arkiv/query/route.ts), [`src/components/ArkivStoragePanel.tsx`](file:///Users/aamir/Downloads/eth-mumbai/src/components/ArkivStoragePanel.tsx).
+* **Track:** **Build on Arkiv (from scratch) — $4,000 Bounty Track**.
+* **Decentralized State Layer:** Replaces fragile centralized databases with Ethereum-aligned, wallet-owned Arkiv entities on the **Rabdi DB-Chain Testnet** (`Chain ID: 7794095`).
+
+#### Why Arkiv Is Critical for Autonomous Trading Agents (vs. Centralized Postgres)
+If xMarket were built on traditional databases (Postgres, MongoDB, Supabase), traders would forfeit four core Web3 security guarantees:
+
+1. **Wallet-Owned Cryptographic Sovereignty:**
+   * *In Postgres:* Trading parameters, spend limits, and bracket orders reside in platform-controlled database rows. If backend servers are compromised, censored, or offline, users have zero ownership over their state.
+   * *On Arkiv:* Every `xmarket.agent_intent` is an on-chain entity whose `$owner` is the user's master Web3 wallet. Active intents cannot be altered, spoofed, or deleted without the trader’s signature.
+
+2. **Native Ephemeral Expiration (Zero Keeper Risk):**
+   * *In Postgres:* Macroeconomic event triggers (e.g., an FOMC rate cut or CPI print) are time-sensitive. Expiring them requires external background cron jobs or cloud workers. If a keeper service crashes, stale intents remain armed and vulnerable to delayed false triggers.
+   * *On Arkiv:* Entities configure native on-chain expiration (`ExpirationTime.fromDays(30)` or `fromMinutes(30)`). Arkiv DB-chain validator nodes automatically prune expired intents at `$expiresAt` natively without server dependencies.
+
+3. **Permissionless Multi-Agent Interoperability:**
+   * *In Postgres:* External solvers, relayers, or searchers must register for closed API keys and navigate rate limits to discover trading opportunities.
+   * *On Arkiv:* Any autonomous agent or relayer globally can query public Arkiv RPC endpoints using SQL-like filters (`exists(status)`, `and(eq("status", str("ARMED")), eq("targetAsset", str("WETH")))`) to discover qualified intents and execute Definitive Flash swaps on behalf of the user, earning execution fee rebates.
+
+4. **Frontrunning Prevention & Cryptographic Auditability:**
+   * *In Postgres:* Database administrators have privileged read access to pending limit triggers and bracket conditions, creating systemic frontrunning and order-leakage risk.
+   * *On Arkiv:* Intent transitions and trade settlement entities are anchored by immutable transaction hashes on the Rabdi DB-Chain, creating a verifiable audit trail.
+
+5. **Principled Data Boundary (What Was Kept Off-Chain):**
+   * *Kept Client-Side:* Ephemeral agent session private keys remain strictly in browser `sessionStorage` (never written to public storage).
+   * *Kept in Memory:* Transient high-frequency tweet feeds remain in temporary RAM buffers to prevent state bloat. Only authenticated user **Intents** and on-chain **Trade Executions** are committed to Arkiv.
+
+* **Entity Schemas:**
+  - `xmarket.agent_intent`: Pre-armed event trading parameters, confidence thresholds, and ERC-4337 smart account delegations. Configured with native 30-day on-chain expiration (`ExpirationTime.fromDays(30)`).
+  - `xmarket.agent_trade`: Real on-chain Definitive Flash trade execution records and 0G sentiment proofs.
+* **Wallet Address Writing Entities:** `0x666aaB9c94bE79AbA5bf033a393A705156AD5060`
+* **Query Judges Can Run (cURL):**
+  ```bash
+  curl -s -X POST https://rpc.rabdi.db-chain.testnet.arkiv.network \
+    -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","method":"arkiv_query","params":["exists(status)",{"limit":10}],"id":1}'
+  ```
+* **Query Judges Can Run (TypeScript with `@arkiv-network/sdk`):**
+  ```typescript
+  import { createPublicClient } from "@arkiv-network/sdk";
+  import { rabdi } from "@arkiv-network/sdk/chains";
+  import { http } from "viem";
+
+  const client = createPublicClient({ chain: rabdi({ accessKey: "" }), transport: http() });
+  const result = await client.query("exists(status)", { limit: 10 });
+  console.log("Entities on Rabdi DB-Chain:", result.entities);
+  ```
+* **Arkiv Submission Documentation Files:**
+  - [`/arkiv/schema.md`](arkiv/schema.md) — Schema definitions, indexed fields, ownership model, and expiration policies.
+  - [`/arkiv/friction.md`](arkiv/friction.md) — Developer friction report, BigInt serialization bug reproduction, and DX feedback.
+  - [`/arkiv/reach.md`](arkiv/reach.md) — Target market, user adoption, live testing, and post-hackathon roadmap.
+  - [`/arkiv/why-arkiv.md`](arkiv/why-arkiv.md) — Architectural rationale, comparison against Postgres, and what was kept off-chain.
+  - [`/arkiv/how-you-use-arkiv.md`](arkiv/how-you-use-arkiv.md) — How filters and expiration fit trading agents, and UI features visible to users.
+
+### 6. Local Persistence, Trade Ledger & Onchain Balance Sync
+* **Implementation:** [`src/lib/db.ts`](file:///Users/aamir/Downloads/eth-mumbai/src/lib/db.ts), [`src/app/api/positions/route.ts`](file:///Users/aamir/Downloads/eth-mumbai/src/app/api/positions/route.ts), [`src/app/api/trades/route.ts`](file:///Users/aamir/Downloads/eth-mumbai/src/app/api/trades/route.ts), [`src/components/TradesHistoryTable.tsx`](file:///Users/aamir/Downloads/eth-mumbai/src/components/TradesHistoryTable.tsx).
+* **High-Performance SQLite Store:** Armed strategies, executed positions, PnL records, and transaction hashes persist in an embedded SQLite database (`data/xmarket.db`) operating in WAL mode with `better-sqlite3`.
+* **Granular Trade History Ledger:** Full historical ledger tracking entry/exit executions, realized PnL, 0G proof IDs, and direct Arbiscan transaction links.
 * **Real-Time Balance Tracker:** [`src/components/WalletButton.tsx`](file:///Users/aamir/Downloads/eth-mumbai/src/components/WalletButton.tsx) batches RPC queries against Arbitrum One (`arb1.arbitrum.io/rpc`) for native ETH and canonical USDC (`0xaf88...5831`), computing real-time net worth in USD.
 
 ---
@@ -75,8 +144,8 @@ The trading pipeline operates as a deterministic, six-stage state machine:
 1. **Intent Declaration & Risk Parameterization**  
    The trader selects a target catalyst source (e.g. Jerome Powell / FOMC, Vitalik Buterin, Elon Musk, or a custom X handle), selects the target asset (`WETH`, `WBTC`, `SOL`, `ARB`), sets confidence thresholds ($\ge 75\%$), and specifies Take-Profit / Stop-Loss percentage brackets.
 
-2. **Autonomous Surveillance & Stream Ingestion**  
-   The live radar continuously monitors target handles via Twitter API v2 endpoints or zero-key fallback syndication bridges. Reviewers and operators can also inject direct tweet URLs or trigger synthetic breaking event statements directly from the live terminal.
+2. **Autonomous Surveillance & Sequential Ingestion Queue**  
+   The live radar continuously surveils target accounts using a sequential round-robin queue with an exact **1,000ms delay** enforced between handle queries, backed by a 5-second server cache to eliminate HTTP 429 rate limits. Reviewers and operators can also inject direct tweet URLs or test any public persona with 1-click test chips directly from the live terminal.
 
 3. **Confidential Sentiment Inference**  
    Within seconds of payload detection, the event text is dispatched to 0G Private Computer. The TEE node validates context, evaluates dovish/bullish economic implications, assigns a confidence metric, and issues a cryptographic hardware `request_id`.
@@ -134,5 +203,13 @@ Open **[http://localhost:3000](http://localhost:3000)** to launch the landing pa
 
 ---
 
+## How We Used AI (ETHGlobal Hackathon Disclosure)
+
+As required by ETHGlobal's rules, this project utilized AI tools during development:
+* **Antigravity AI Assistant**: Used for pair-programming, typing `@arkiv-network/sdk` schema definitions, designing interactive UI components, structuring EIP-712 session delegation contracts, and writing technical documentation for the Arkiv track submission.
+
+---
+
 ## License
-MIT License • Engineered for **ETHGlobal Mumbai 2026**.
+
+MIT License • Engineered for **ETHGlobal Mumbai 2026**. Open source and publicly auditable.
