@@ -1,0 +1,33 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="32"
+  height="32"
+  viewBox="0 0 24 24"
+  fill="none"
+>
+  <!-- Outer Triangle Outline -->
+  <path
+    d="M 12 3.5 L 20 19.5 L 4 19.5 Z"
+    stroke="#2563eb"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Left Half: Solid Fill -->
+  <path
+    d="M 12 3.5 L 4 19.5 L 12 19.5 Z"
+    fill="#2563eb"
+    stroke="#2563eb"
+    stroke-width="1"
+    stroke-linejoin="round"
+  />
+
+  <!-- Center Dividing Line -->
+  <path
+    d="M 12 3.5 L 12 19.5"
+    stroke="#2563eb"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+</svg>
