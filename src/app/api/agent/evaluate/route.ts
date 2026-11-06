@@ -11,11 +11,13 @@ export async function POST(req: Request) {
       intent,
       apiKeys = {},
       walletAddress,
+      agentWallet,
     }: {
       tweet: DetectedTweet;
       intent: TradingIntent;
       apiKeys?: { zeroGKey?: string; definitiveKey?: string };
       walletAddress?: string;
+      agentWallet?: { address: string; privateKey?: string };
     } = body;
 
     if (!tweet || !intent) {
@@ -54,7 +56,8 @@ export async function POST(req: Request) {
         intent,
         sentimentScore: zeroGResult.sentimentScore,
         apiKey: apiKeys.definitiveKey,
-        funderAddress: walletAddress || "0x71C...498B",
+        funderAddress: agentWallet?.address || walletAddress || "0x71C84A962bFe2487431e50fB79D325603F01498B",
+        agentPrivateKey: agentWallet?.privateKey,
       });
 
       const auditRecord: AuditExecutionRecord = {

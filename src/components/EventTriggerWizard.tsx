@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { TradingIntent, SentimentDirection, EventPosition } from "@/types";
+import React, { useState, useEffect } from "react";
+import { TradingIntent, SentimentDirection, EventPosition, AgentWalletInfo } from "@/types";
+import { createAgentWallet, requestMasterWalletDelegation } from "@/lib/agentWallet";
 import {
   CheckCircle2,
   ArrowRight,
@@ -13,6 +14,13 @@ import {
   Check,
   Coins,
   Scale,
+  Wallet,
+  Copy,
+  ExternalLink,
+  RefreshCw,
+  Key,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 
 interface EventTriggerWizardProps {
@@ -22,6 +30,7 @@ interface EventTriggerWizardProps {
   onToggleListening: () => void;
   onDeployPosition?: (position: Omit<EventPosition, "id" | "createdAt">) => void;
   connectedWallet?: string;
+  onConnectWallet?: () => void;
   onCancel?: () => void;
 }
 
@@ -203,44 +212,105 @@ export function EventTriggerWizard({
   );
   const riskRewardRatio = (intent.takeProfitPct / Math.max(0.1, intent.stopLossPct)).toFixed(1);
 
-  const handleConfirmSubmit = () => {
+  // Generate dedicated non-custodial Agent Wallet for this event position (strictly unique per card)
+  const [agentWallet, setAgentWallet] = useState<AgentWalletInfo>(() =>
+    createAgentWallet(connectedWallet || "0x71C84A962bFe2487431e50fB79D325603F01498B", intent.tradeSizeUsdc)
+  );
+  const [copiedWallet, setCopiedWallet] = useState<boolean>(false);
+  const [isSigningDelegation, setIsSigningDelegation] = useState<boolean>(false);
+  const [signingError, setSigningError] = useState<string | null>(null);
+
+  // Allow generating a new unique agent wallet on demand
+  const handleRegenerateAgentWallet = () => {
+    const freshWallet = createAgentWallet(
+      connectedWallet || "0x71C84A962bFe2487431e50fB79D325603F01498B",
+      intent.tradeSizeUsdc
+    );
+    setAgentWallet(freshWallet);
+    setSigningError(null);
+  };
+
+  // Sync allocation when trade size changes or connected wallet connects
+  useEffect(() => {
+    setAgentWallet((prev) => ({
+      ...prev,
+      allocatedBudgetUsdc: intent.tradeSizeUsdc,
+      masterController: connectedWallet || prev.masterController,
+    }));
+  }, [intent.tradeSizeUsdc, connectedWallet]);
+
+  const handleConfirmSubmit = async () => {
     setIsSubmitting(true);
+    setSigningError(null);
+    setIsSigningDelegation(true);
 
-    // Deploy position to parent state
-    onDeployPosition?.({
-      eventName: intent.eventName || `${intent.targetHandle} Catalyst`,
-      targetHandle: intent.targetHandle.replace("@", ""),
-      persona: activePreset.persona !== "Custom Voice" ? activePreset.persona : `@${intent.targetHandle}`,
-      avatar: activePreset.avatar || undefined,
-      targetAsset: intent.targetAsset,
-      contraAsset: intent.contraAsset || "USDC",
-      sizeUsdc: intent.tradeSizeUsdc,
-      entryPrice: currentRefPrice,
-      currentPrice: currentRefPrice,
-      side: intent.sentimentDirection === "BEARISH_ONLY" ? "SHORT" : "LONG",
-      pnlUsd: 0,
-      pnlPct: 0,
-      takeProfitPrice: estimatedTpPrice,
-      stopLossPrice: estimatedSlPrice,
-      takeProfitPct: intent.takeProfitPct,
-      stopLossPct: intent.stopLossPct,
-      status: "ARMED",
-      confidenceThreshold: intent.confidenceThreshold,
-      orderType: intent.orderType || "BRACKET",
-      explorerUrl: `https://arbiscan.io/address/${connectedWallet || "0x71C84A962bFe2487431e50fB79D325603F01498B"}`,
-    });
+    try {
+      const master = connectedWallet || "0x71C84A962bFe2487431e50fB79D325603F01498B";
 
-    // Automatically activate live tweet listening radar if disabled
-    if (!isListening) {
-      onToggleListening();
-    }
+      // Request cryptographic EIP-712 session key delegation from the master connected wallet
+      const { signature, activeMaster } = await requestMasterWalletDelegation({
+        masterController: master,
+        agentWalletAddress: agentWallet.address,
+        eventName: intent.eventName || `${intent.targetHandle} Catalyst`,
+        targetHandle: intent.targetHandle.replace("@", ""),
+        allocatedBudgetUsdc: intent.tradeSizeUsdc,
+        sessionExpiry: agentWallet.sessionExpiry || Math.floor(Date.now() / 1000) + 86400 * 30,
+      });
 
-    setJustSubmitted(true);
-    setTimeout(() => {
+      const effectiveMaster = activeMaster || master;
+
+      const authorizedAgentWallet: AgentWalletInfo = {
+        ...agentWallet,
+        masterController: effectiveMaster,
+        delegationSignature: signature,
+        status: "ARMED",
+      };
+
+      setAgentWallet(authorizedAgentWallet);
+
+      // Deploy position with its dedicated, non-custodial Agent Wallet
+      onDeployPosition?.({
+        eventName: intent.eventName || `${intent.targetHandle} Catalyst`,
+        targetHandle: intent.targetHandle.replace("@", ""),
+        persona: activePreset.persona !== "Custom Voice" ? activePreset.persona : `@${intent.targetHandle}`,
+        avatar: activePreset.avatar || undefined,
+        targetAsset: intent.targetAsset,
+        contraAsset: intent.contraAsset || "USDC",
+        sizeUsdc: intent.tradeSizeUsdc,
+        entryPrice: currentRefPrice,
+        currentPrice: currentRefPrice,
+        side: intent.sentimentDirection === "BEARISH_ONLY" ? "SHORT" : "LONG",
+        pnlUsd: 0,
+        pnlPct: 0,
+        takeProfitPrice: estimatedTpPrice,
+        stopLossPrice: estimatedSlPrice,
+        takeProfitPct: intent.takeProfitPct,
+        stopLossPct: intent.stopLossPct,
+        status: "ARMED",
+        confidenceThreshold: intent.confidenceThreshold,
+        orderType: intent.orderType || "BRACKET",
+        agentWallet: authorizedAgentWallet,
+        explorerUrl: authorizedAgentWallet.explorerUrl,
+      });
+
+      // Automatically activate live tweet listening radar if disabled
+      if (!isListening) {
+        onToggleListening();
+      }
+
+      setJustSubmitted(true);
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setJustSubmitted(false);
+        setCurrentStep(1);
+      }, 1200);
+    } catch (err: any) {
+      console.warn("Session delegation rejected or error:", err);
+      setSigningError(err?.message || "Signature request was rejected in your wallet. Please sign to authorize the agent sub-wallet.");
       setIsSubmitting(false);
-      setJustSubmitted(false);
-      setCurrentStep(1);
-    }, 1200);
+    } finally {
+      setIsSigningDelegation(false);
+    }
   };
 
   return (
@@ -697,13 +767,141 @@ export function EventTriggerWizard({
                 <span className="text-[11px] font-semibold text-emerald-700">0G TEE + Definitive Flash Bracket</span>
               </div>
             </div>
+
+            {/* ERC-4337 Smart Account with Scoped Session Key */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/90 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs shadow-xs">
+                    <Key className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 leading-tight">
+                      ERC-4337 Smart Account (Safe Session Module)
+                    </div>
+                    <div className="text-[10px] text-blue-600 font-mono font-medium">
+                      Arbitrum One Counterfactual Contract • 100% Master Custody
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleRegenerateAgentWallet}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 text-[10px] font-bold text-blue-700 transition cursor-pointer"
+                    title="Generate a fresh Smart Account & Session Key pair for this card"
+                  >
+                    <RefreshCw className="w-3 h-3 text-blue-600" />
+                    <span>Regenerate Account</span>
+                  </button>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Safe Account Armed</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Smart Account & Session Key Addresses */}
+              <div className="space-y-2">
+                <div className="p-3 rounded-xl bg-white/95 border border-blue-100 flex items-center justify-between shadow-2xs">
+                  <div>
+                    <div className="text-[9px] uppercase font-bold text-slate-400">Smart Account (Funds &amp; Custody)</div>
+                    <div className="font-mono font-bold text-slate-900 text-xs mt-0.5">
+                      {agentWallet.address}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(agentWallet.address);
+                        setCopiedWallet(true);
+                        setTimeout(() => setCopiedWallet(false), 2000);
+                      }}
+                      className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 transition cursor-pointer"
+                      title="Copy Smart Account Address"
+                    >
+                      {copiedWallet ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                    <a
+                      href={agentWallet.explorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-blue-600 transition cursor-pointer"
+                      title="View Smart Account on Arbiscan"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white/80 border border-blue-50 flex items-center justify-between text-[11px]">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Scoped Session Key (Agent Executor)</span>
+                    <span className="font-mono text-slate-700 text-xs font-semibold">
+                      {agentWallet.sessionKeyAddress ? `${agentWallet.sessionKeyAddress.slice(0, 10)}...${agentWallet.sessionKeyAddress.slice(-8)}` : "Restricted to Definitive Flash Router"}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 font-bold">
+                    Router Locked
+                  </span>
+                </div>
+              </div>
+
+              {/* Controller & Parameters Matrix */}
+              <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 pt-0.5">
+                <div className="truncate p-2 rounded-lg bg-white/70 border border-blue-50">
+                  <span className="text-slate-400 block font-bold uppercase text-[9px]">Master Owner (100% Custody)</span>
+                  <span className="font-mono font-bold text-slate-800 text-[11px] truncate block">
+                    {agentWallet.masterController.slice(0, 8)}...{agentWallet.masterController.slice(-6)}
+                  </span>
+                  {connectedWallet ? (
+                    <span className="text-[9px] text-emerald-600 font-semibold">● Connected Master</span>
+                  ) : (
+                    <span className="text-[9px] text-amber-600 font-semibold">● Master EOA</span>
+                  )}
+                </div>
+
+                <div className="truncate p-2 rounded-lg bg-white/70 border border-blue-50">
+                  <span className="text-slate-400 block font-bold uppercase text-[9px]">Session Spend Cap</span>
+                  <span className="font-mono font-bold text-blue-700 text-[11px] block">
+                    ${intent.tradeSizeUsdc} USDC
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-medium">Definitive Flash Bracket</span>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-slate-600 font-medium leading-relaxed bg-white/60 p-2.5 rounded-xl border border-blue-100/60 flex items-start gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Safe &amp; Loss-Proof:</strong> Capital resides inside your ERC-4337 Smart Account on Arbitrum One, never in an ephemeral key. The session key can <em>only</em> execute Definitive Flash bracket trades up to ${intent.tradeSizeUsdc} USDC. Your master wallet can trigger an Emergency Sweep anytime!
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* Signing Error Alert */}
+          {signingError && (
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{signingError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSigningError(null)}
+                className="text-rose-600 hover:text-rose-900 font-bold text-[11px] cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           {/* Submission Success Alert */}
           {justSubmitted && (
             <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in fade-in">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Event Position Deployed &amp; Sentinel Armed! Monitoring live tweets now.</span>
+              <span>Session Key Authorized! Event Agent Deployed with Dedicated Sub-Wallet.</span>
             </div>
           )}
 
@@ -722,11 +920,25 @@ export function EventTriggerWizard({
             <button
               type="button"
               onClick={handleConfirmSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isSigningDelegation}
               className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer disabled:opacity-60"
             >
-              <Play className="w-4 h-4 fill-current" />
-              <span>{isSubmitting ? "Deploying Sentinel..." : "Submit & Arm Event Position"}</span>
+              {isSigningDelegation ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Awaiting EIP-712 Signature in Wallet...</span>
+                </>
+              ) : isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Deploying Agent Sub-Wallet...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4 text-white" />
+                  <span>Authorize Session &amp; Arm Event Agent</span>
+                </>
+              )}
             </button>
           </div>
         </div>

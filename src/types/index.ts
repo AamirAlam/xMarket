@@ -34,6 +34,7 @@ export interface ZeroGInferenceResult {
   matchedIntent: boolean;
   timestamp: string;
   isSimulatedFallback?: boolean;
+  agentWalletAddress?: string;
 }
 
 export interface FlashOrderResult {
@@ -54,6 +55,7 @@ export interface FlashOrderResult {
   explorerUrl: string;
   timestamp: string;
   isSimulatedFallback?: boolean;
+  agentWalletAddress?: string;
 }
 
 export interface AgentVaultState {
@@ -62,6 +64,28 @@ export interface AgentVaultState {
   dailySpendCapUsd: number;
   inferencesRunCount: number;
   tradesExecutedCount: number;
+}
+
+export interface SmartAccountPolicy {
+  targetRouter: string;
+  allowedMethods: string[];
+  spendingCapUsdc: number;
+  sessionExpiry: number;
+}
+
+export interface AgentWalletInfo {
+  address: string; // The Counterfactual Smart Account Address (Safe / ERC-4337 on Arbitrum)
+  sessionKeyAddress: string; // Ephemeral Session Key Address authorized by Smart Account
+  privateKey?: string; // Private key of ephemeral session key (stored client-side)
+  masterController: string; // Owner with 100% custody (User MetaMask EOA)
+  allocatedBudgetUsdc: number;
+  status: "ARMED" | "ACTIVE" | "SETTLED" | "REVOKED";
+  createdAt: string;
+  explorerUrl: string;
+  delegationSignature?: string;
+  sessionExpiry?: number;
+  accountType: "ERC4337_SMART_ACCOUNT" | "SAFE_SESSION_MODULE";
+  policy?: SmartAccountPolicy;
 }
 
 export type PositionStatus = "ARMED" | "OPEN" | "CLOSED" | "PROFIT_TAKEN" | "STOPPED_OUT";
@@ -90,7 +114,16 @@ export interface EventPosition {
   createdAt: string;
   txHash?: string;
   explorerUrl?: string;
+  entryTxHash?: string;
+  entryExplorerUrl?: string;
+  exitTxHash?: string;
+  exitExplorerUrl?: string;
+  exitPrice?: number;
+  settledAt?: string;
+  isSwept?: boolean;
+  sweepTxHash?: string;
   triggeredTweet?: string;
+  agentWallet?: AgentWalletInfo;
 }
 
 export interface AuditExecutionRecord {

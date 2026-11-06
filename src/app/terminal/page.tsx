@@ -16,8 +16,114 @@ import {
   AuditExecutionRecord,
   EventPosition,
 } from "@/types";
+import { createAgentWallet } from "@/lib/agentWallet";
 import { History, ExternalLink, ArrowLeft, Plus, ShieldCheck, PieChart, TrendingUp } from "lucide-react";
 import Link from "next/link";
+
+function createInitialPresetPositions(masterController: string): EventPosition[] {
+  const master = masterController || "0x71C84A962bFe2487431e50fB79D325603F01498B";
+
+  // Every single card has its own unique, newly-generated non-custodial Smart Account + Session Key
+  const fomcAgent = createAgentWallet(master, 500, "FOMC Rate Cut Decision");
+  fomcAgent.status = "SETTLED";
+
+  const pectraAgent = createAgentWallet(master, 250, "Pectra Hardfork Devcon");
+  pectraAgent.status = "ACTIVE";
+
+  const trumpAgent = createAgentWallet(master, 1000, "Crypto Strategic Reserve");
+  trumpAgent.status = "ACTIVE";
+
+  return [
+    {
+      id: "pos-fomc-1",
+      eventName: "FOMC Rate Cut Decision (7:00 PM)",
+      targetHandle: "federalreserve",
+      persona: "Jerome Powell",
+      avatar: "/avatars/powell.jpg",
+      targetAsset: "WETH",
+      contraAsset: "USDC",
+      sizeUsdc: 500,
+      entryPrice: 2740.0,
+      currentPrice: 2918.1,
+      side: "LONG",
+      pnlUsd: 32.5,
+      pnlPct: 6.5,
+      takeProfitPrice: 2877.0,
+      stopLossPrice: 2671.5,
+      takeProfitPct: 5.0,
+      stopLossPct: 2.5,
+      status: "PROFIT_TAKEN",
+      confidenceThreshold: 0.75,
+      orderType: "BRACKET",
+      createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+      txHash: "0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
+      explorerUrl: "https://arbiscan.io/tx/0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
+      entryTxHash: "0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
+      entryExplorerUrl: "https://arbiscan.io/tx/0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
+      exitTxHash: "0x5c8e9b412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a11",
+      exitExplorerUrl: "https://arbiscan.io/tx/0x5c8e9b412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a11",
+      exitPrice: 2877.0,
+      settledAt: new Date(Date.now() - 3600000 * 1).toISOString(),
+      agentWallet: fomcAgent,
+    },
+    {
+      id: "pos-pectra-2",
+      eventName: "Pectra Hardfork Devcon",
+      targetHandle: "VitalikButerin",
+      persona: "Vitalik Buterin",
+      avatar: "/avatars/vitalik.jpg",
+      targetAsset: "WETH",
+      contraAsset: "USDC",
+      sizeUsdc: 250,
+      entryPrice: 2810.0,
+      currentPrice: 2939.8,
+      side: "LONG",
+      pnlUsd: 11.55,
+      pnlPct: 4.62,
+      takeProfitPrice: 2950.5,
+      stopLossPrice: 2739.75,
+      takeProfitPct: 5.0,
+      stopLossPct: 2.5,
+      status: "OPEN",
+      confidenceThreshold: 0.8,
+      orderType: "BRACKET",
+      createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+      txHash: "0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
+      explorerUrl: "https://arbiscan.io/tx/0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
+      entryTxHash: "0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
+      entryExplorerUrl: "https://arbiscan.io/tx/0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
+      agentWallet: pectraAgent,
+    },
+    {
+      id: "pos-trump-3",
+      eventName: "Crypto Strategic Reserve",
+      targetHandle: "realDonaldTrump",
+      persona: "Donald Trump",
+      avatar: "/avatars/trump.jpg",
+      targetAsset: "WBTC",
+      contraAsset: "USDC",
+      sizeUsdc: 1000,
+      entryPrice: 84200.0,
+      currentPrice: 89673.0,
+      side: "LONG",
+      pnlUsd: 65.0,
+      pnlPct: 6.5,
+      takeProfitPrice: 88410.0,
+      stopLossPrice: 82095.0,
+      takeProfitPct: 5.0,
+      stopLossPct: 2.5,
+      status: "OPEN",
+      confidenceThreshold: 0.75,
+      orderType: "BRACKET",
+      createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+      txHash: "0x7c2b184920394857162839405918273645192837465019283746501928374650",
+      explorerUrl: "https://arbiscan.io/tx/0x7c2b184920394857162839405918273645192837465019283746501928374650",
+      entryTxHash: "0x7c2b184920394857162839405918273645192837465019283746501928374650",
+      entryExplorerUrl: "https://arbiscan.io/tx/0x7c2b184920394857162839405918273645192837465019283746501928374650",
+      agentWallet: trumpAgent,
+    },
+  ];
+}
 
 function TerminalContent() {
   const searchParams = useSearchParams();
@@ -83,84 +189,30 @@ function TerminalContent() {
   // Connected Web3 Wallet State
   const [walletAddress, setWalletAddress] = useState<string>("");
 
-  // Event-Based Positions State (with live PnL & tracking)
-  const [positions, setPositions] = useState<EventPosition[]>([
-    {
-      id: "pos-fomc-1",
-      eventName: "FOMC Rate Cut Decision (7:00 PM)",
-      targetHandle: "federalreserve",
-      persona: "Jerome Powell",
-      avatar: "/avatars/powell.jpg",
-      targetAsset: "WETH",
-      contraAsset: "USDC",
-      sizeUsdc: 500,
-      entryPrice: 2740.0,
-      currentPrice: 2918.1,
-      side: "LONG",
-      pnlUsd: 32.5,
-      pnlPct: 6.5,
-      takeProfitPrice: 2877.0,
-      stopLossPrice: 2671.5,
-      takeProfitPct: 5.0,
-      stopLossPct: 2.5,
-      status: "PROFIT_TAKEN",
-      confidenceThreshold: 0.75,
-      orderType: "BRACKET",
-      createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-      txHash: "0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-      explorerUrl: "https://arbiscan.io/tx/0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-    },
-    {
-      id: "pos-pectra-2",
-      eventName: "Pectra Hardfork Devcon",
-      targetHandle: "VitalikButerin",
-      persona: "Vitalik Buterin",
-      avatar: "/avatars/vitalik.jpg",
-      targetAsset: "WETH",
-      contraAsset: "USDC",
-      sizeUsdc: 250,
-      entryPrice: 2810.0,
-      currentPrice: 2939.8,
-      side: "LONG",
-      pnlUsd: 11.55,
-      pnlPct: 4.62,
-      takeProfitPrice: 2950.5,
-      stopLossPrice: 2739.75,
-      takeProfitPct: 5.0,
-      stopLossPct: 2.5,
-      status: "OPEN",
-      confidenceThreshold: 0.8,
-      orderType: "BRACKET",
-      createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-      txHash: "0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-      explorerUrl: "https://arbiscan.io/tx/0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-    },
-    {
-      id: "pos-trump-3",
-      eventName: "Crypto Strategic Reserve",
-      targetHandle: "realDonaldTrump",
-      persona: "Donald Trump",
-      avatar: "/avatars/trump.jpg",
-      targetAsset: "WBTC",
-      contraAsset: "USDC",
-      sizeUsdc: 1000,
-      entryPrice: 84200.0,
-      currentPrice: 89673.0,
-      side: "LONG",
-      pnlUsd: 65.0,
-      pnlPct: 6.5,
-      takeProfitPrice: 88410.0,
-      stopLossPrice: 82095.0,
-      takeProfitPct: 5.0,
-      stopLossPct: 2.5,
-      status: "OPEN",
-      confidenceThreshold: 0.75,
-      orderType: "BRACKET",
-      createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-      txHash: "0x7c2b184920394857162839405918273645192837465019283746501928374650",
-      explorerUrl: "https://arbiscan.io/tx/0x7c2b184920394857162839405918273645192837465019283746501928374650",
-    },
-  ]);
+  // Event-Based Positions State (each position card has its own unique, newly-generated non-custodial wallet)
+  const [positions, setPositions] = useState<EventPosition[]>(() =>
+    createInitialPresetPositions("")
+  );
+
+  // Sync positions controller whenever master wallet connects or switches
+  useEffect(() => {
+    if (walletAddress) {
+      setPositions((prev) =>
+        prev.map((pos) => {
+          if (pos.agentWallet && pos.agentWallet.masterController !== walletAddress) {
+            return {
+              ...pos,
+              agentWallet: {
+                ...pos.agentWallet,
+                masterController: walletAddress,
+              },
+            };
+          }
+          return pos;
+        })
+      );
+    }
+  }, [walletAddress]);
 
   const handleDeployPosition = (newPosData: Omit<EventPosition, "id" | "createdAt">) => {
     const newPos: EventPosition = {
@@ -172,106 +224,209 @@ function TerminalContent() {
   };
 
   const handleClosePosition = (id: string) => {
-    setPositions((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          return {
-            ...p,
-            status: "CLOSED",
-          };
+    // 1. Locate the position being closed
+    const target = positions.find((p) => p.id === id);
+
+    // 2. Revoke and clean up dedicated non-custodial agent wallet session from storage
+    if (target?.agentWallet?.address && typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("pumpit_agent_wallets");
+        if (stored) {
+          const wallets = JSON.parse(stored);
+          delete wallets[target.agentWallet.address.toLowerCase()];
+          localStorage.setItem("pumpit_agent_wallets", JSON.stringify(wallets));
         }
-        return p;
-      })
-    );
+      } catch (err) {
+        console.warn("Could not clean up revoked agent wallet:", err);
+      }
+    }
+
+    // 3. Delete the event agent card completely from active positions list
+    setPositions((prev) => prev.filter((p) => p.id !== id));
   };
 
-  // Audit History
-  const [auditRecords, setAuditRecords] = useState<AuditExecutionRecord[]>([
-    {
-      id: "audit-1",
-      timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-      tweet: {
-        id: "tw-101",
-        author: "federalreserve",
-        text: "FOMC statement: The Committee decided to lower the target range for the federal funds rate by 50 basis points.",
-        createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-        url: "https://x.com/federalreserve/status/101",
-      },
-      zeroG: {
-        requestId: "0g-req-fomc-9b3f",
-        model: "0g-private-llama-3-70b-tee",
-        sentimentScore: 0.88,
-        confidence: 0.94,
-        sentimentLabel: "EXTREMELY_BULLISH",
-        action: "BUY",
-        rationale: "Aggressive 50 bps rate cut easing financial conditions, historically strong tailwind for risk assets and ETH.",
-        matchedIntent: true,
+  // Execute the final SELL trade on Arbitrum One via Definitive Flash API
+  const handleExecuteExitSell = async (
+    pos: EventPosition,
+    exitType: "TAKE_PROFIT" | "STOP_LOSS" | "MANUAL_MARKET" = "TAKE_PROFIT"
+  ) => {
+    try {
+      const res = await fetch("/api/agent/trade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "EXIT_SELL",
+          position: pos,
+          exitType,
+          apiKey: apiKeys.definitiveKey || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.trade) {
+        const trade = data.trade;
+
+        // Update position state with final SELL trade execution on Arbitrum One
+        setPositions((prev) =>
+          prev.map((p) => {
+            if (p.id === pos.id) {
+              return {
+                ...p,
+                status: trade.status,
+                exitPrice: trade.exitPrice,
+                currentPrice: trade.exitPrice,
+                pnlUsd: trade.realizedPnlUsd,
+                pnlPct: trade.realizedPnlPct,
+                exitTxHash: trade.exitTxHash,
+                exitExplorerUrl: trade.exitExplorerUrl,
+                settledAt: new Date().toISOString(),
+              };
+            }
+            return p;
+          })
+        );
+
+        // Update Vault with fee rebate
+        setVault((prev) => ({
+          ...prev,
+          creditsEarnedFromTradesUsd: prev.creditsEarnedFromTradesUsd + trade.vaultRebateUsd,
+          zeroGComputeBalanceUsd: prev.zeroGComputeBalanceUsd + trade.vaultRebateUsd,
+          tradesExecutedCount: prev.tradesExecutedCount + 1,
+        }));
+      }
+    } catch (err) {
+      console.error("Exit sell execution failed:", err);
+    }
+  };
+
+  // Emergency Escape Hatch: Sweep funds from Smart Account back to Master Wallet
+  const handleEmergencySweep = async (pos: EventPosition) => {
+    try {
+      const res = await fetch("/api/agent/trade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "SWEEP_MASTER",
+          position: pos,
+          masterController: walletAddress || pos.agentWallet?.masterController,
+          amountUsdc: pos.sizeUsdc,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.sweep) {
+        setPositions((prev) =>
+          prev.map((p) => {
+            if (p.id === pos.id) {
+              return {
+                ...p,
+                isSwept: true,
+                sweepTxHash: data.sweep.sweepTxHash,
+                status: "CLOSED",
+              };
+            }
+            return p;
+          })
+        );
+      }
+    } catch (err) {
+      console.error("Emergency sweep error:", err);
+    }
+  };
+
+  // Audit History (all execution records dynamically reference their generated agent sub-wallets)
+  const [auditRecords, setAuditRecords] = useState<AuditExecutionRecord[]>(() => {
+    const w1 = createAgentWallet(walletAddress, 500);
+    const w2 = createAgentWallet(walletAddress, 250);
+    return [
+      {
+        id: "audit-1",
         timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-      },
-      order: {
-        orderId: "flash-fomc-001",
-        status: "FILLED",
-        targetChain: "Arbitrum One",
-        targetToken: "WETH",
-        contraToken: "USDC",
-        amount: "$500 USDC -> WETH",
-        txHash: "0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-        bracket: {
-          takeProfitPercentage: 5.0,
-          stopLossPercentage: 2.5,
-          estimatedTakeProfitPrice: 2877.0,
-          estimatedStopLossPrice: 2671.5,
+        tweet: {
+          id: "tw-101",
+          author: "federalreserve",
+          text: "FOMC statement: The Committee decided to lower the target range for the federal funds rate by 50 basis points.",
+          createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+          url: "https://x.com/federalreserve/status/101",
         },
-        integratorFeeRebateUsd: 0.5,
-        explorerUrl: "https://arbiscan.io/tx/0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
-        timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-      },
-      status: "EXECUTED",
-      reason: "Confidence (94%) exceeded threshold (75%). Placed BRACKET order via Definitive Flash.",
-    },
-    {
-      id: "audit-2",
-      timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-      tweet: {
-        id: "tw-102",
-        author: "VitalikButerin",
-        text: "Pectra hardfork specifications finalized for devnet testing. Layer 1 scalability improvements on track.",
-        createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-        url: "https://x.com/VitalikButerin/status/102",
-      },
-      zeroG: {
-        requestId: "0g-req-vitalik-4a1e",
-        model: "0g-private-llama-3-70b-tee",
-        sentimentScore: 0.72,
-        confidence: 0.86,
-        sentimentLabel: "BULLISH",
-        action: "BUY",
-        rationale: "Devnet finalization confirms smooth execution timeline for Ethereum protocol roadmap.",
-        matchedIntent: true,
-        timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-      },
-      order: {
-        orderId: "flash-pectra-002",
-        status: "FILLED",
-        targetChain: "Arbitrum One",
-        targetToken: "WETH",
-        contraToken: "USDC",
-        amount: "$250 USDC -> WETH",
-        txHash: "0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-        bracket: {
-          takeProfitPercentage: 5.0,
-          stopLossPercentage: 2.5,
-          estimatedTakeProfitPrice: 2950.5,
-          estimatedStopLossPrice: 2739.75,
+        zeroG: {
+          requestId: "0g-req-fomc-9b3f",
+          model: "0g-private-llama-3-70b-tee",
+          sentimentScore: 0.88,
+          confidence: 0.94,
+          sentimentLabel: "EXTREMELY_BULLISH",
+          action: "BUY",
+          rationale: "Aggressive 50 bps rate cut easing financial conditions, historically strong tailwind for risk assets and ETH.",
+          matchedIntent: true,
+          timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
         },
-        integratorFeeRebateUsd: 0.25,
-        explorerUrl: "https://arbiscan.io/tx/0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
-        timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+        order: {
+          orderId: "flash-fomc-001",
+          status: "FILLED",
+          targetChain: "Arbitrum One",
+          targetToken: "WETH",
+          contraToken: "USDC",
+          amount: "$500 USDC -> WETH",
+          txHash: "0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
+          bracket: {
+            takeProfitPercentage: 5.0,
+            stopLossPercentage: 2.5,
+            estimatedTakeProfitPrice: 2877.0,
+            estimatedStopLossPrice: 2671.5,
+          },
+          integratorFeeRebateUsd: 0.5,
+          explorerUrl: "https://arbiscan.io/tx/0x9b3f412a88489c6d3e8e192736154817a02b1f8c7b8d4e92a104c8f5e27a91bc",
+          timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+          agentWalletAddress: w1.address,
+        },
+        status: "EXECUTED",
+        reason: "Confidence (94%) exceeded threshold (75%). Placed BRACKET order via Definitive Flash.",
       },
-      status: "EXECUTED",
-      reason: "Confidence (86%) exceeded threshold (80%). Placed BRACKET order via Definitive Flash.",
-    },
-  ]);
+      {
+        id: "audit-2",
+        timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+        tweet: {
+          id: "tw-102",
+          author: "VitalikButerin",
+          text: "Pectra hardfork specifications finalized for devnet testing. Layer 1 scalability improvements on track.",
+          createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+          url: "https://x.com/VitalikButerin/status/102",
+        },
+        zeroG: {
+          requestId: "0g-req-vitalik-4a1e",
+          model: "0g-private-llama-3-70b-tee",
+          sentimentScore: 0.72,
+          confidence: 0.86,
+          sentimentLabel: "BULLISH",
+          action: "BUY",
+          rationale: "Devnet finalization confirms smooth execution timeline for Ethereum protocol roadmap.",
+          matchedIntent: true,
+          timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+        },
+        order: {
+          orderId: "flash-pectra-002",
+          status: "FILLED",
+          targetChain: "Arbitrum One",
+          targetToken: "WETH",
+          contraToken: "USDC",
+          amount: "$250 USDC -> WETH",
+          txHash: "0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
+          bracket: {
+            takeProfitPercentage: 5.0,
+            stopLossPercentage: 2.5,
+            estimatedTakeProfitPrice: 2950.5,
+            estimatedStopLossPrice: 2739.75,
+          },
+          integratorFeeRebateUsd: 0.25,
+          explorerUrl: "https://arbiscan.io/tx/0x4a1e92d83b1029c78f192a837c64510293847561829304918273645192837465",
+          timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+          agentWalletAddress: w2.address,
+        },
+        status: "EXECUTED",
+        reason: "Confidence (86%) exceeded threshold (80%). Placed BRACKET order via Definitive Flash.",
+      },
+    ];
+  });
 
   // Sponsor API Keys (loaded from localStorage or environment fallback)
   const [apiKeys, setApiKeys] = useState({
@@ -309,6 +464,22 @@ function TerminalContent() {
       setLatestOrder(null);
 
       try {
+        // Locate matching armed or open position to extract its agent wallet (non-custodial session key)
+        const targetPos = positions.find(
+          (p) =>
+            (p.status === "ARMED" || p.status === "OPEN") &&
+            (p.targetHandle.toLowerCase() === tweet.author.toLowerCase() ||
+              p.eventName.toLowerCase() === intent.eventName.toLowerCase())
+        );
+
+        let activeAgentWallet = targetPos?.agentWallet;
+        if (!activeAgentWallet) {
+          activeAgentWallet = createAgentWallet(
+            walletAddress || "0x71C84A962bFe2487431e50fB79D325603F01498B",
+            intent.tradeSizeUsdc
+          );
+        }
+
         const res = await fetch("/api/agent/evaluate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -317,6 +488,12 @@ function TerminalContent() {
             intent,
             apiKeys,
             walletAddress: walletAddress || undefined,
+            agentWallet: activeAgentWallet
+              ? {
+                  address: activeAgentWallet.address,
+                  privateKey: activeAgentWallet.privateKey,
+                }
+              : undefined,
           }),
         });
 
@@ -351,7 +528,10 @@ function TerminalContent() {
                   currentPrice: Math.round(refPrice * (1 + tradePnlPct / 100) * 100) / 100,
                   txHash: record.order!.txHash,
                   explorerUrl: record.order!.explorerUrl,
+                  entryTxHash: record.order!.txHash,
+                  entryExplorerUrl: record.order!.explorerUrl,
                   triggeredTweet: tweet.text,
+                  agentWallet: updated[armedIdx].agentWallet || activeAgentWallet,
                 };
                 return updated;
               } else {
@@ -378,7 +558,10 @@ function TerminalContent() {
                   createdAt: new Date().toISOString(),
                   txHash: record.order!.txHash,
                   explorerUrl: record.order!.explorerUrl,
+                  entryTxHash: record.order!.txHash,
+                  entryExplorerUrl: record.order!.explorerUrl,
                   triggeredTweet: tweet.text,
+                  agentWallet: activeAgentWallet,
                 };
                 return [newPos, ...prev];
               }
@@ -409,7 +592,7 @@ function TerminalContent() {
         setIsEvaluating(false);
       }
     },
-    [intent, apiKeys, walletAddress]
+    [intent, apiKeys, walletAddress, positions]
   );
 
   // Periodic polling when listening
@@ -532,6 +715,8 @@ function TerminalContent() {
                     positions={positions}
                     onClosePosition={handleClosePosition}
                     onStartNewTrade={() => setIsCreatingTrade(true)}
+                    onExecuteExitSell={handleExecuteExitSell}
+                    onEmergencySweep={handleEmergencySweep}
                   />
                 </div>
 
@@ -667,6 +852,7 @@ function TerminalContent() {
                       <th className="pb-3">0G Proof ID</th>
                       <th className="pb-3">Sentiment</th>
                       <th className="pb-3">Flash Order</th>
+                      <th className="pb-3">Agent Wallet</th>
                       <th className="pb-3 text-right">Explorer</th>
                     </tr>
                   </thead>
@@ -701,6 +887,23 @@ function TerminalContent() {
                             </span>
                           ) : (
                             <span className="text-slate-500 font-medium">Capital Guarded</span>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          {rec.order?.agentWalletAddress ? (
+                            <a
+                              href={`https://arbiscan.io/address/${rec.order.agentWalletAddress}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-mono text-[11px] text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-lg border border-purple-200 transition"
+                            >
+                              <ShieldCheck className="w-3 h-3 text-purple-600" />
+                              <span>
+                                {rec.order.agentWalletAddress.slice(0, 6)}...{rec.order.agentWalletAddress.slice(-4)}
+                              </span>
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 font-mono text-[11px]">Non-Custodial</span>
                           )}
                         </td>
                         <td className="py-3 text-right">
