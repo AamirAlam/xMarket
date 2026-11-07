@@ -546,10 +546,16 @@ export function LiveMonitor({
               const isLiked = !!likedTweets[tweet.id];
               const isRetweeted = !!retweetedTweets[tweet.id];
 
+              const isNewArrival = tweet.id === newlyArrivedId;
+
               return (
                 <div
                   key={tweet.id}
-                  className="p-3.5 sm:p-4 rounded-2xl border border-slate-200/85 bg-white hover:border-slate-300 hover:shadow-2xs transition duration-150 space-y-2.5 group"
+                  className={`p-3.5 sm:p-4 rounded-2xl border bg-white hover:border-slate-300 hover:shadow-2xs transition-all duration-300 space-y-2.5 group ${
+                    isNewArrival
+                      ? "border-blue-400 bg-blue-50/20 ring-2 ring-blue-500/20 shadow-md shadow-blue-500/10 animate-in fade-in slide-in-from-top-3 duration-300"
+                      : "border-slate-200/85"
+                  }`}
                 >
                   {/* Twitter Post Header */}
                   <div className="flex items-start gap-3">
@@ -574,7 +580,7 @@ export function LiveMonitor({
                     {/* Tweet Header Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-1 min-w-0 flex-wrap">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                           {/* Full Name */}
                           <span className="font-bold text-slate-900 text-[13px] hover:underline cursor-pointer truncate">
                             {profile.name}
@@ -591,9 +597,15 @@ export function LiveMonitor({
                           <span className="text-slate-300 text-[11px]">·</span>
 
                           {/* Relative Time */}
-                          <span className="text-slate-400 text-[11px] font-medium whitespace-nowrap">
+                          <span className="text-slate-400 text-[11px] font-medium whitespace-nowrap tabular-nums">
                             {formatTwitterTime(tweet.createdAt)}
                           </span>
+
+                          {isNewArrival && (
+                            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200/70 animate-pulse">
+                              LIVE
+                            </span>
+                          )}
                         </div>
 
                         {/* View Link Icon */}
@@ -689,8 +701,8 @@ export function LiveMonitor({
           <div className="pointer-events-auto flex flex-col items-center justify-center text-center space-y-1.5 pt-5 pb-1">
             {/* Centered blinking & spinning beacon */}
             <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 border border-slate-200/90 text-slate-500 shrink-0 shadow-xs">
-              <RefreshCw className={`w-4 h-4 text-slate-600 ${isListening && cleanTrackedHandles.length > 0 ? "animate-spin" : ""}`} />
-              {isListening && cleanTrackedHandles.length > 0 && (
+              <RefreshCw className={`w-4 h-4 text-blue-600 ${isListening ? "animate-spin" : ""}`} />
+              {isListening && (
                 <>
                   <span className="absolute inset-0 rounded-full bg-blue-400/20 animate-ping pointer-events-none" />
                   <span className="absolute -inset-1 rounded-full border border-blue-300/40 animate-pulse pointer-events-none" />
@@ -699,9 +711,9 @@ export function LiveMonitor({
             </div>
 
             {/* Title with live checking status */}
-            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-800">
+            <div className="flex flex-col items-center justify-center gap-1 text-xs">
               {currentCheckingHandle ? (
-                <>
+                <div className="flex items-center gap-1.5 font-bold text-slate-800">
                   <span>Checking @{currentCheckingHandle}</span>
                   {queueProgress && queueProgress.total > 1 && (
                     <span className="text-blue-600 font-bold text-[11px] bg-blue-50 px-1.5 py-0.2 rounded">
@@ -713,15 +725,21 @@ export function LiveMonitor({
                     <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" style={{ animationDelay: "200ms" }} />
                     <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" style={{ animationDelay: "400ms" }} />
                   </span>
-                </>
+                </div>
               ) : !isListening ? (
-                <span className="text-slate-500">Updates paused</span>
+                <span className="text-slate-500 font-bold">Updates paused</span>
               ) : cleanTrackedHandles.length === 0 ? (
-                <span className="text-slate-700 font-semibold">
-                  Place your first trade to start fetching...
-                </span>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-slate-800 font-bold">
+                    Place your first trade to start fetching...
+                  </span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200/70 text-[10px] font-semibold text-blue-700 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    <span>Streaming live market • Scanning @{marketScanningHandle}</span>
+                  </div>
+                </div>
               ) : (
-                <span>Checking again in {pollSecondsRemaining}s</span>
+                <span className="font-bold text-slate-800">Checking again in {pollSecondsRemaining}s</span>
               )}
             </div>
 
@@ -729,7 +747,7 @@ export function LiveMonitor({
             <p className="text-[10px] text-slate-400 font-medium">
               {cleanTrackedHandles.length > 0
                 ? "Checking for latest tweets automatically"
-                : "Real tweets will stream here once a trade is active"}
+                : "Real tweets will lock to your agent once a trade is active"}
             </p>
           </div>
         </div>

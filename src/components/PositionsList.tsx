@@ -453,27 +453,8 @@ export function PositionsList({
                   )}
                 </div>
 
-                {/* Col 6: Right Action: Close if Paused & View Details */}
-                <div className="flex items-center justify-end gap-2 shrink-0">
-                  {pos.status === "PAUSED" && (
-                    <button
-                      type="button"
-                      disabled={closingPosId === pos.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleClosePausedPosition(pos);
-                      }}
-                      className="px-2.5 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium text-xs border border-rose-200 transition flex items-center gap-1 active:scale-95 cursor-pointer disabled:opacity-50 shadow-2xs"
-                      title="Close position and remove from active list"
-                    >
-                      {closingPosId === pos.id ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <X className="w-3.5 h-3.5 stroke-[2]" />
-                      )}
-                      <span>Close</span>
-                    </button>
-                  )}
+                {/* Col 6: Right Action: View Details */}
+                <div className="flex items-center justify-end shrink-0">
                   <button
                     type="button"
                     onClick={() => setSelectedPosition(pos)}
@@ -986,16 +967,16 @@ export function PositionsList({
                     type="button"
                     disabled={closingPosId === selectedPosition.id}
                     onClick={() => handleClosePausedPosition(selectedPosition)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs border border-rose-200 transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-3 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm border border-rose-200 transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 shadow-2xs"
                   >
                     {closingPosId === selectedPosition.id ? (
                       <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <RefreshCw className="w-4 h-4 animate-spin text-rose-600" />
                         <span>Closing Position...</span>
                       </>
                     ) : (
                       <>
-                        <X className="w-3.5 h-3.5 stroke-[2]" />
+                        <X className="w-4 h-4 stroke-[2]" />
                         <span>Close Position (Move to History)</span>
                       </>
                     )}
