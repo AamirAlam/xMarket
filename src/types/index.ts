@@ -154,6 +154,7 @@ export type AgentTradeType =
   | "EXIT_TAKE_PROFIT"
   | "EXIT_STOP_LOSS"
   | "EXIT_SELL"
+  | "CLOSE"
   | "SWEEP";
 
 export interface AgentTradeRecord {

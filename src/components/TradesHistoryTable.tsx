@@ -18,10 +18,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   CheckCircle2,
-  DollarSign,
-  Layers,
-  Radio,
   Database,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { ArkivEntityModal } from "@/components/ArkivEntityModal";
 import { isValidArkivKey } from "@/lib/arkiv";
@@ -48,7 +47,7 @@ export function TradesHistoryTable({
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1500);
+    setTimeout(() => setCopiedKey(null), 1800);
   };
 
   // Filtered trades
@@ -61,6 +60,7 @@ export function TradesHistoryTable({
         trade.tradeType !== "EXIT_TAKE_PROFIT" &&
         trade.tradeType !== "EXIT_STOP_LOSS" &&
         trade.tradeType !== "EXIT_SELL" &&
+        trade.tradeType !== "CLOSE" &&
         trade.tradeType !== "SWEEP"
       ) {
         return false;
@@ -114,144 +114,106 @@ export function TradesHistoryTable({
   }, [trades]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* 4 Summary Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total Real Trades Executed */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">
-              Real Agent Executions
+    <div className="space-y-6 animate-in fade-in duration-200 font-sans selection:bg-blue-100 selection:text-blue-900">
+      {/* 1. Minimal Metric Strip - Clean Inter Typography & Low Density */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Metric 1: Total Trades */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs space-y-1">
+          <span className="text-xs text-slate-400 font-medium block">Total Executions</span>
+          <div className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <span>{trades.length}</span>
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/70">
+              Arbitrum One
             </span>
-            <div className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              <span>{trades.length}</span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                Arbitrum One
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500">Autonomous on-chain trades</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-            <Layers className="w-5 h-5" />
-          </div>
+          <div className="text-[11px] text-slate-400">Autonomous agent orders</div>
         </div>
 
-        {/* Card 2: Cumulative Traded Volume */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">
-              Total Traded Volume
-            </span>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              ${totalVolumeUsdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <p className="text-[11px] text-slate-500">USDC collateral allocated</p>
+        {/* Metric 2: Traded Volume */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs space-y-1">
+          <span className="text-xs text-slate-400 font-medium block">Total Traded Volume</span>
+          <div className="text-2xl font-bold tracking-tight text-slate-900">
+            ${totalVolumeUsdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
-            <DollarSign className="w-5 h-5" />
-          </div>
+          <div className="text-[11px] text-slate-400">USDC collateral deployed</div>
         </div>
 
-        {/* Card 3: Net Realized / Active PnL */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">
-              Net Performance
-            </span>
-            <div
-              className={`text-2xl font-black font-mono flex items-center gap-1 ${totalRealizedPnl >= 0 ? "text-emerald-600" : "text-rose-600"
-                }`}
-            >
-              {totalRealizedPnl >= 0 ? "+" : ""}
-              ${totalRealizedPnl.toFixed(2)}
-            </div>
-            <p className="text-[11px] text-slate-500">Combined PnL across executions</p>
+        {/* Metric 3: Net Realized PnL */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs space-y-1">
+          <span className="text-xs text-slate-400 font-medium block">Net Realized PnL</span>
+          <div className={`text-2xl font-bold tracking-tight flex items-center gap-1 ${
+            totalRealizedPnl >= 0 ? "text-emerald-600" : "text-rose-600"
+          }`}>
+            <span>{totalRealizedPnl >= 0 ? "+" : ""}${totalRealizedPnl.toFixed(2)}</span>
           </div>
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center border ${totalRealizedPnl >= 0
-                ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                : "bg-rose-50 text-rose-600 border-rose-100"
-              }`}
-          >
-            {totalRealizedPnl >= 0 ? (
-              <TrendingUp className="w-5 h-5" />
-            ) : (
-              <TrendingDown className="w-5 h-5" />
-            )}
-          </div>
+          <div className="text-[11px] text-slate-400">Across settled bracket exits</div>
         </div>
 
-        {/* Card 4: Execution Architecture */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">
-              Execution Security
-            </span>
-            <div className="text-base font-bold text-slate-900 flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-blue-600 fill-current" />
-              <span>Definitive Flash</span>
-            </div>
-            <p className="text-[11px] text-slate-500">MEV Protected • 0G TEE Traces</p>
+        {/* Metric 4: Execution Architecture */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs space-y-1">
+          <span className="text-xs text-slate-400 font-medium block">Execution Engine</span>
+          <div className="text-base font-bold text-slate-900 flex items-center gap-1.5 pt-0.5">
+            <Zap className="w-4 h-4 text-blue-600 fill-current" />
+            <span>Definitive Flash</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
-            <ShieldCheck className="w-5 h-5" />
+          <div className="text-[11px] text-slate-400 flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>MEV Protected • 0G TEE</span>
           </div>
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="rounded-[32px] border border-slate-200/90 bg-white p-6 shadow-sm space-y-5">
-        {/* Header & Controls Bar */}
+      {/* 2. Main Table Card */}
+      <div className="rounded-[32px] border border-slate-200/90 bg-white p-6 sm:p-7 shadow-xs space-y-5">
+        {/* Controls Bar: Title + Segmented Filters + Refresh */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-2xs">
-              <History className="w-5 h-5" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-slate-900">
+                Trade Executions
+              </h3>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                {filteredTrades.length}
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900">
-                  Real Agents Trade History ({filteredTrades.length})
-                </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
-                  Live On-Chain
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                Cryptographically executed Arbitrum One trades triggered by 0G verified catalysts
-              </p>
-            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Verified on-chain executions and bracket order fills
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Filter Pills */}
-            <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Minimal Segmented Filter Pills */}
+            <div className="flex items-center p-1 bg-slate-100/80 rounded-xl border border-slate-200/70 text-xs font-medium">
               <button
                 type="button"
                 onClick={() => setFilterType("ALL")}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${filterType === "ALL"
-                    ? "bg-white text-blue-600 shadow-2xs"
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+                  filterType === "ALL"
+                    ? "bg-white text-slate-900 shadow-2xs font-semibold"
                     : "text-slate-600 hover:text-slate-900"
-                  }`}
+                }`}
               >
                 All ({trades.length})
               </button>
               <button
                 type="button"
                 onClick={() => setFilterType("ENTRY")}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${filterType === "ENTRY"
-                    ? "bg-white text-blue-600 shadow-2xs"
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+                  filterType === "ENTRY"
+                    ? "bg-white text-slate-900 shadow-2xs font-semibold"
                     : "text-slate-600 hover:text-slate-900"
-                  }`}
+                }`}
               >
                 Entries
               </button>
               <button
                 type="button"
                 onClick={() => setFilterType("EXIT")}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${filterType === "EXIT"
-                    ? "bg-white text-blue-600 shadow-2xs"
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+                  filterType === "EXIT"
+                    ? "bg-white text-slate-900 shadow-2xs font-semibold"
                     : "text-slate-600 hover:text-slate-900"
-                  }`}
+                }`}
               >
                 Settlements
               </button>
@@ -262,7 +224,7 @@ export function TradesHistoryTable({
               <select
                 value={selectedAsset}
                 onChange={(e) => setSelectedAsset(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-1.5 rounded-xl border border-slate-200/80 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="ALL">All Assets</option>
                 {availableAssets.map((asset) => (
@@ -279,8 +241,8 @@ export function TradesHistoryTable({
                 type="button"
                 onClick={onRefresh}
                 disabled={isLoading}
-                title="Refresh real trade history from database"
-                className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition cursor-pointer disabled:opacity-50"
+                title="Refresh trade history"
+                className="p-2 rounded-xl border border-slate-200/80 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition cursor-pointer disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin text-blue-600" : ""}`} />
               </button>
@@ -288,44 +250,43 @@ export function TradesHistoryTable({
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Minimal Search Bar */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search trades by catalyst, Twitter handle, persona, token, or Tx hash..."
+            placeholder="Search by catalyst, handle, token, or Tx hash..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+            className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 bg-slate-50/40 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 font-bold"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
             >
-              Clear
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
-        {/* Trades Table */}
+        {/* 3. Trades Table - Spacious, Low Density & Inter Typography */}
         {filteredTrades.length > 0 ? (
           <div className="overflow-x-auto rounded-2xl border border-slate-100">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] uppercase text-slate-500 font-bold tracking-wider">
-                  <th className="py-3.5 px-4">Date &amp; Time</th>
-                  <th className="py-3.5 px-4">Agent / Catalyst</th>
-                  <th className="py-3.5 px-4">Action &amp; Pair</th>
-                  <th className="py-3.5 px-4">Size &amp; Order</th>
-                  <th className="py-3.5 px-4">Price</th>
-                  <th className="py-3.5 px-4">PnL</th>
-                  <th className="py-3.5 px-4">Smart Account</th>
-                  <th className="py-3.5 px-4 text-right">On-Chain Tx</th>
+                <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] text-slate-400 font-medium">
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Catalyst &amp; Agent</th>
+                  <th className="py-3 px-4">Action &amp; Pair</th>
+                  <th className="py-3 px-4">Size</th>
+                  <th className="py-3 px-4">Price</th>
+                  <th className="py-3 px-4">Realized PnL</th>
+                  <th className="py-3 px-4 text-right">Verification &amp; Hash</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs bg-white">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredTrades.map((t) => {
                   const dateObj = new Date(t.createdAt);
                   const formattedDate = dateObj.toLocaleDateString(undefined, {
@@ -340,16 +301,16 @@ export function TradesHistoryTable({
                   return (
                     <tr
                       key={t.id}
-                      className="hover:bg-slate-50/80 transition-colors group"
+                      className="hover:bg-slate-50/60 transition-colors group"
                     >
-                      {/* 1. Date & Time */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      {/* 1. Date */}
+                      <td className="py-4 px-4 whitespace-nowrap">
                         <div className="font-semibold text-slate-800">{formattedDate}</div>
-                        <div className="text-[11px] text-slate-400 font-mono">{formattedTime}</div>
+                        <div className="text-[11px] text-slate-400">{formattedTime}</div>
                       </td>
 
-                      {/* 2. Agent / Catalyst */}
-                      <td className="py-3.5 px-4 max-w-[220px]">
+                      {/* 2. Catalyst & Agent */}
+                      <td className="py-4 px-4 max-w-[220px]">
                         <div className="flex items-center gap-2.5">
                           {t.avatar ? (
                             <Image
@@ -357,194 +318,156 @@ export function TradesHistoryTable({
                               alt={t.persona || t.targetHandle}
                               width={32}
                               height={32}
-                              className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-2xs shrink-0"
+                              className="w-8 h-8 rounded-full object-cover border border-slate-200/80 shadow-2xs shrink-0"
                             />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0 border border-blue-200">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-700 font-semibold flex items-center justify-center text-xs shrink-0 border border-blue-100">
                               {(t.persona || t.targetHandle).slice(0, 2).toUpperCase()}
                             </div>
                           )}
                           <div className="min-w-0">
-                            <div className="font-bold text-slate-900 truncate">
+                            <div className="font-semibold text-slate-900 truncate" title={t.triggeredTweet || undefined}>
                               {t.persona || t.eventName}
                             </div>
-                            <div className="text-[11px] text-slate-500 truncate flex items-center gap-1">
-                              <span>@{t.targetHandle.replace("@", "")}</span>
-                              <span className="text-slate-300">•</span>
-                              <span className="text-slate-400 truncate">{t.eventName}</span>
+                            <div className="text-[11px] text-slate-400 truncate">
+                              @{t.targetHandle.replace("@", "")}
                             </div>
                           </div>
                         </div>
-
-                        {/* Triggered Tweet Preview if available */}
-                        {t.triggeredTweet && (
-                          <div
-                            className="mt-1.5 text-[10px] text-slate-500 italic bg-slate-50 p-1.5 rounded-lg border border-slate-200/60 truncate"
-                            title={t.triggeredTweet}
-                          >
-                            &ldquo;{t.triggeredTweet}&rdquo;
-                          </div>
-                        )}
                       </td>
 
                       {/* 3. Action & Pair */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 mb-1">
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 mb-0.5">
                           {t.tradeType === "ENTRY_BUY" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-50 text-blue-800 border border-blue-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/70">
                               <Zap className="w-2.5 h-2.5 fill-current" />
-                              ENTRY BUY
+                              BUY
                             </span>
                           )}
                           {t.tradeType === "EXIT_TAKE_PROFIT" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
                               <TrendingUp className="w-2.5 h-2.5" />
                               TAKE PROFIT
                             </span>
                           )}
                           {t.tradeType === "EXIT_STOP_LOSS" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-rose-50 text-rose-800 border border-rose-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/70">
                               <TrendingDown className="w-2.5 h-2.5" />
                               STOP LOSS
                             </span>
                           )}
-                          {t.tradeType === "EXIT_SELL" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
+                          {(t.tradeType === "EXIT_SELL" || t.tradeType === "CLOSE") && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/70">
                               <CheckCircle2 className="w-2.5 h-2.5" />
-                              SETTLED EXIT
+                              {t.tradeType === "CLOSE" ? "CLOSED" : "EXIT"}
                             </span>
                           )}
                           {t.tradeType === "SWEEP" && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-100 text-slate-800 border border-slate-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                               <ShieldCheck className="w-2.5 h-2.5" />
                               SWEEP
                             </span>
                           )}
 
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${t.side === "LONG"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-rose-50 text-rose-700"
-                              }`}
-                          >
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
+                            t.side === "LONG"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-rose-50 text-rose-700"
+                          }`}>
                             {t.side}
                           </span>
                         </div>
-                        <div className="font-bold text-slate-800 font-mono text-[11px]">
+                        <div className="font-medium text-slate-700 text-xs">
                           {t.targetAsset}/{t.contraAsset}
                         </div>
                       </td>
 
-                      {/* 4. Size & Order */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-black text-slate-900 font-mono text-sm">
+                      {/* 4. Size */}
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <div className="font-semibold text-slate-900">
                           ${t.sizeUsdc.toFixed(2)}
                         </div>
-                        <div className="text-[10px] text-slate-500 font-medium">
-                          {t.orderType} Flash Order
+                        <div className="text-[11px] text-slate-400">
+                          {t.orderType}
                         </div>
                       </td>
 
                       {/* 5. Executed Price */}
-                      <td className="py-3.5 px-4 whitespace-nowrap font-mono">
-                        <div className="font-bold text-slate-900">
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <div className="font-semibold text-slate-900">
                           ${t.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         {t.exitPrice && t.exitPrice !== t.price && (
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[11px] text-slate-400">
                             Exit: ${t.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
                         )}
                       </td>
 
-                      {/* 6. PnL */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      {/* 6. Realized PnL */}
+                      <td className="py-4 px-4 whitespace-nowrap">
                         {t.pnlUsd !== undefined && (t.status === "OPEN" || t.status === "SETTLED") ? (
-                          <div
-                            className={`inline-flex items-center gap-1 font-bold font-mono text-xs px-2 py-0.5 rounded-md ${t.pnlUsd >= 0
-                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                : "bg-rose-50 text-rose-800 border border-rose-200"
-                              }`}
-                          >
+                          <div className={`inline-flex items-center gap-1 font-semibold text-xs px-2.5 py-0.5 rounded-full border ${
+                            t.pnlUsd >= 0
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                              : "bg-rose-50 text-rose-700 border-rose-200/80"
+                          }`}>
                             {t.pnlUsd >= 0 ? (
                               <ArrowUpRight className="w-3 h-3 text-emerald-600" />
                             ) : (
                               <ArrowDownRight className="w-3 h-3 text-rose-600" />
                             )}
                             <span>
-                              {t.pnlUsd >= 0 ? "+" : ""}${t.pnlUsd.toFixed(2)} ({t.pnlPct ? (t.pnlPct >= 0 ? `+${t.pnlPct}%` : `${t.pnlPct}%`) : "0%"})
+                              {t.pnlUsd >= 0 ? "+" : ""}${t.pnlUsd.toFixed(2)}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-400 font-mono text-xs">-</span>
+                          <span className="text-slate-400 text-xs">-</span>
                         )}
                       </td>
 
-                      {/* 7. Smart Account */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        {t.agentWalletAddress ? (
-                          <div className="flex items-center gap-1.5">
-                            <a
-                              href={`https://arbiscan.io/address/${t.agentWalletAddress}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 font-mono text-[11px] text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-lg border border-purple-200 transition"
-                            >
-                              <ShieldCheck className="w-3 h-3 text-purple-600" />
-                              <span>
-                                {t.agentWalletAddress.slice(0, 6)}...{t.agentWalletAddress.slice(-4)}
-                              </span>
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(t.agentWalletAddress!, `addr-${t.id}`)}
-                              className="text-slate-400 hover:text-slate-700 p-1 rounded transition"
-                              title="Copy smart account address"
-                            >
-                              {copiedKey === `addr-${t.id}` ? (
-                                <Check className="w-3 h-3 text-emerald-600" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 font-mono text-[11px]">Non-Custodial</span>
-                        )}
-                      </td>
-
-                      {/* 8. On-Chain Tx & Explorer */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      {/* 7. Verification & Hash */}
+                      <td className="py-4 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Arkiv DB Pill */}
                           <button
                             type="button"
                             onClick={() => setArkivModalTrade(t)}
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold text-[11px] border transition shadow-2xs cursor-pointer ${t.arkivEntityKey && isValidArkivKey(t.arkivEntityKey)
-                                ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200"
-                                : "bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200"
-                              }`}
-                            title="Inspect / Sync Trade Entity on Arkiv DB-Chain"
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium text-xs border transition shadow-2xs cursor-pointer ${
+                              t.arkivEntityKey && isValidArkivKey(t.arkivEntityKey)
+                                ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200/80"
+                                : "bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200/80"
+                            }`}
+                            title="Inspect on Arkiv DB-Chain"
                           >
-                            <Database className="w-2.5 h-2.5 text-amber-600" />
+                            <Database className="w-3 h-3 text-amber-600" />
                             <span>Arkiv</span>
-                            {t.arkivEntityKey && isValidArkivKey(t.arkivEntityKey) && (
+                            {t.arkivEntityKey && isValidArkivKey(t.arkivEntityKey) ? (
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            ) : (
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                             )}
                           </button>
+
+                          {/* Arbiscan Link */}
                           <a
                             href={t.explorerUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 transition shadow-2xs"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-xs border border-slate-200 transition"
+                            title="View on Arbiscan"
                           >
                             <span>Arbiscan</span>
-                            <ExternalLink className="w-3 h-3 text-blue-600" />
+                            <ExternalLink className="w-3 h-3 text-slate-400" />
                           </a>
+
+                          {/* Copy Hash */}
                           <button
                             type="button"
                             onClick={() => handleCopy(t.txHash, `tx-${t.id}`)}
-                            className="text-slate-400 hover:text-slate-700 p-1 rounded transition"
-                            title="Copy transaction hash"
+                            className="text-slate-400 hover:text-slate-700 p-1 rounded-md transition"
+                            title="Copy Tx Hash"
                           >
                             {copiedKey === `tx-${t.id}` ? (
                               <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -553,8 +476,13 @@ export function TradesHistoryTable({
                             )}
                           </button>
                         </div>
-                        <div className="text-[10px] font-mono text-slate-400 mt-1">
-                          {t.txHash.slice(0, 8)}...{t.txHash.slice(-6)}
+
+                        <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                          {t.txHash.startsWith("0x")
+                            ? `${t.txHash.slice(0, 8)}...${t.txHash.slice(-6)}`
+                            : t.txHash.length > 22
+                            ? `${t.txHash.slice(0, 18)}...`
+                            : t.txHash}
                         </div>
                       </td>
                     </tr>
@@ -564,21 +492,21 @@ export function TradesHistoryTable({
             </table>
           </div>
         ) : (
-          /* Clean Empty State */
-          <div className="py-14 px-6 text-center rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 space-y-4">
+          /* Clean Minimal Empty State */
+          <div className="py-14 px-6 text-center rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-100">
-              <History className="w-6 h-6" />
+              <History className="w-6 h-6 stroke-[2]" />
             </div>
             <div className="max-w-md mx-auto space-y-1">
               <h4 className="text-base font-bold text-slate-900">
                 {searchQuery || filterType !== "ALL"
-                  ? "No matching trade executions found"
-                  : "No Real Agent Trades Executed Yet"}
+                  ? "No matching trade executions"
+                  : "No Trade Executions Yet"}
               </h4>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {searchQuery || filterType !== "ALL"
-                  ? "Try resetting your search query or filters to see all recorded on-chain trades."
-                  : "Deploy an event trading agent or wait for 0G sentiment verification to fire. All executed trades on Arbitrum One will appear here permanently with cryptographic proofs."}
+                  ? "Try clearing your search query or switching filters to see all recorded executions."
+                  : "Deploy an event trading agent from the Positions tab. When catalysts occur, verified executions on Arbitrum One will appear here."}
               </p>
             </div>
 
@@ -608,7 +536,7 @@ export function TradesHistoryTable({
         )}
       </div>
 
-      {/* Arkiv Entity Inspector & Sync Modal */}
+      {/* Arkiv Entity Inspector Modal */}
       {arkivModalTrade && (
         <ArkivEntityModal
           isOpen={!!arkivModalTrade}

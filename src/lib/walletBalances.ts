@@ -2,7 +2,7 @@ import { WalletBalances } from "@/types";
 
 const ARBITRUM_RPC = "https://arb1.arbitrum.io/rpc";
 const ARBITRUM_USDC = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
-export const REFERENCE_ETH_PRICE = 2840.50;
+export const REFERENCE_ETH_PRICE = 2248.50;
 
 /**
  * Queries real onchain balances for a given wallet address on Arbitrum One.

@@ -25,7 +25,7 @@ export function WalletButton({ onAddressChange, onBalanceChange }: WalletButtonP
     eth: 0,
     usdc: 0,
     totalUsd: 0,
-    ethPriceUsd: 2840.50,
+    ethPriceUsd: 2248.50,
     isLoading: false,
     lastUpdated: "",
   });
@@ -73,7 +73,7 @@ export function WalletButton({ onAddressChange, onBalanceChange }: WalletButtonP
         console.warn("Could not remove wallet address", e);
       }
       onAddressChange?.("");
-      setBalanceState({ eth: 0, usdc: 0, totalUsd: 0, ethPriceUsd: 2840.50, isLoading: false, lastUpdated: "" });
+      setBalanceState({ eth: 0, usdc: 0, totalUsd: 0, ethPriceUsd: 2248.50, isLoading: false, lastUpdated: "" });
     }
   };
 

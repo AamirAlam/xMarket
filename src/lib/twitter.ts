@@ -74,10 +74,22 @@ export async function fetchLatestTweetsForHandle({
   const cleanHandle = handle.replace("@", "").trim();
   const token = bearerToken || process.env.TWITTER_BEARER_TOKEN;
   const minTimestamp = createdAfter ? new Date(createdAfter).getTime() : 0;
+  const now = Date.now();
+  // Strictly filter out any old tweets: maximum allowed age is 24 hours
+  const MAX_TWEET_AGE_MS = 24 * 60 * 60 * 1000;
+  const recencyThreshold = now - MAX_TWEET_AGE_MS;
 
-  // Helper to filter tweets by both createdAfter (strictly newer than agent creation) and sinceId
+  // Helper to filter tweets: strictly latest tweets only (within 24h, after createdAfter, and after sinceId)
   const filterFresh = (list: DetectedTweet[]): DetectedTweet[] => {
     let result = list;
+
+    // Never return old tweets older than 24 hours
+    result = result.filter((t) => {
+      const tTime = new Date(t.createdAt).getTime();
+      return !isNaN(tTime) && tTime >= recencyThreshold;
+    });
+
+    // If createdAfter is specified (e.g. trade creation time), strictly newer than createdAfter
     if (minTimestamp > 0 && !isNaN(minTimestamp)) {
       result = result.filter((t) => new Date(t.createdAt).getTime() > minTimestamp);
     }
@@ -89,7 +101,6 @@ export async function fetchLatestTweetsForHandle({
 
   // 1. Check in-memory rate-limit cache first to prevent upstream 429 rate limit errors
   const cached = handleFeedCache.get(cleanHandle.toLowerCase());
-  const now = Date.now();
   if (cached && now - cached.timestamp < CACHE_TTL_MS) {
     return filterFresh(cached.tweets);
   }
@@ -175,12 +186,17 @@ export async function fetchLatestTweetsForHandle({
             textContent = cleanTweetText(titleMatch[1]);
           }
 
+          const parsedDate = dateMatch ? new Date(dateMatch[1]) : null;
+          if (!parsedDate || isNaN(parsedDate.getTime()) || parsedDate.getTime() < recencyThreshold) {
+            continue;
+          }
+
           if (textContent) {
             parsedTweets.push({
               id: tweetId,
               author: tweetAuthor,
               text: textContent,
-              createdAt: dateMatch ? new Date(dateMatch[1]).toISOString() : new Date().toISOString(),
+              createdAt: parsedDate.toISOString(),
               url: tweetUrl,
             });
           }

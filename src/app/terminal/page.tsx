@@ -65,9 +65,10 @@ function TerminalContent() {
   const isPollingRef = useRef<boolean>(false);
   const [currentPollingHandle, setCurrentPollingHandle] = useState<string>("");
   const [queueProgress, setQueueProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
-  const [pollCountdown, setPollCountdown] = useState<number>(3);
+  const [pollCountdown, setPollCountdown] = useState<number>(5);
   const [lastTweetId, setLastTweetId] = useState<string>("");
   const [latestTweet, setLatestTweet] = useState<DetectedTweet | null>(null);
+  const [monitoredTweets, setMonitoredTweets] = useState<DetectedTweet[]>([]);
   const [isInjecting, setIsInjecting] = useState<boolean>(false);
 
   // Engine Outputs
@@ -97,7 +98,7 @@ function TerminalContent() {
     eth: 0,
     usdc: 0,
     totalUsd: 0,
-    ethPriceUsd: 2840.50,
+    ethPriceUsd: 2248.50,
     isLoading: false,
     lastUpdated: "",
   });
@@ -155,6 +156,23 @@ function TerminalContent() {
           if (data.success && Array.isArray(data.positions)) {
             setPositions(data.positions);
             positionsRef.current = data.positions;
+
+            // Load any existing triggered tweets for active positions into the live feed
+            const existingTweets: DetectedTweet[] = [];
+            data.positions.forEach((pos: EventPosition) => {
+              if ((pos.status === "ARMED" || pos.status === "OPEN") && pos.triggeredTweet) {
+                existingTweets.push({
+                  id: `trig-${pos.id}`,
+                  author: pos.targetHandle,
+                  text: pos.triggeredTweet,
+                  createdAt: pos.createdAt,
+                  url: `https://x.com/${pos.targetHandle.replace("@", "")}`,
+                });
+              }
+            });
+            if (existingTweets.length > 0) {
+              setMonitoredTweets(existingTweets);
+            }
           }
         }
       } catch (err) {
@@ -211,6 +229,18 @@ function TerminalContent() {
       );
     }
   }, [walletAddress]);
+
+  // Keep live feed strictly limited to looking ("ARMED") and active ("OPEN") positions on the left side
+  useEffect(() => {
+    const activeHandles = new Set(
+      positions
+        .filter((p) => p.status === "ARMED" || p.status === "OPEN")
+        .map((p) => p.targetHandle.toLowerCase().replace("@", "").trim())
+    );
+    setMonitoredTweets((prev) =>
+      prev.filter((t) => activeHandles.has(t.author.toLowerCase().replace("@", "").trim()))
+    );
+  }, [positions]);
 
   // Helper to persist position updates (entry trade execution, sell settlement, sweep) into SQLite
   const persistPositionUpdate = async (posToSave: EventPosition) => {
@@ -409,10 +439,10 @@ function TerminalContent() {
           const agentCreationTime = new Date(armedPos.createdAt).getTime();
           if (tweetTime <= agentCreationTime) {
             console.log(
-              `[Evaluation Skipped] Tweet from @${tweet.author} (${tweet.createdAt}) was published before agent ${armedPos.id} creation (${armedPos.createdAt}). Ignoring old tweet.`
+              `[Evaluation Skipped] Tweet from @${tweet.author} (${tweet.createdAt}) was published before trade ${armedPos.id} setup (${armedPos.createdAt}). Ignoring old tweet.`
             );
             setSkipReason(
-              `Tweet published at ${new Date(tweet.createdAt).toLocaleTimeString()} is older than agent creation (${new Date(armedPos.createdAt).toLocaleTimeString()}). Live agents strictly evaluate tweets created after deployment.`
+              `Tweet published at ${new Date(tweet.createdAt).toLocaleTimeString()} is older than trade setup (${new Date(armedPos.createdAt).toLocaleTimeString()}). Only tweets published after trade setup trigger trades.`
             );
             return;
           }
@@ -485,7 +515,7 @@ function TerminalContent() {
             // Update matching ARMED position to OPEN with live execution
             const tradePnlPct = Math.round(tradeIntent.takeProfitPct * 0.72 * 100) / 100;
             const tradePnlUsd = Math.round(((tradeIntent.tradeSizeUsdc * tradePnlPct) / 100) * 100) / 100;
-            const refPrice = armedPos.targetAsset === "WBTC" ? 88250.0 : armedPos.targetAsset === "SOL" ? 192.4 : 2840.5;
+            const refPrice = armedPos.targetAsset === "WBTC" ? 76080.0 : armedPos.targetAsset === "SOL" ? 90.0 : armedPos.targetAsset === "ARB" ? 0.16 : 2248.5;
 
             setPositions((prev) => {
               const armedIdx = prev.findIndex((p) => p.id === armedPos.id && p.status === "ARMED");
@@ -535,7 +565,7 @@ function TerminalContent() {
               persistPositionUpdate(updated[armedIdx]);
               return updated;
             });
-            setSkipReason("0G Catalyst sentiment verified! Ready to execute real Definitive Flash swap via 'Swap Now'.");
+            setSkipReason("Sentiment verified. Ready to execute swap via 'Swap Now'.");
           } else {
             setSkipReason(record.reason);
             setVault((prev) => ({
@@ -561,58 +591,58 @@ function TerminalContent() {
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  // Periodic polling queue when listening: executes each active agent handle sequentially with a strict 1-second delay
-  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
-
+  // Smooth polling queue: strictly checks ONLY active or not started yet positions (never paused)
   useEffect(() => {
+    let isCancelled = false;
+
     if (!isListening || !isPositionsLoaded) {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
       setCurrentPollingHandle("");
+      setQueueProgress({ current: 0, total: 0 });
       return;
     }
 
-    const runPollingQueue = async () => {
-      // Mutex lock to strictly prevent concurrent overlapping polling cycles
-      if (isPollingRef.current) return;
-      isPollingRef.current = true;
-
-      try {
-        const headers: Record<string, string> = {};
-        if (apiKeys.twitterToken) {
-          headers["x-twitter-token"] = apiKeys.twitterToken;
-        }
-
-        // 1. Listen ONLY for running agent accounts (ARMED or OPEN)
-        const activePositions = positionsRef.current.filter((p) => p.status === "ARMED" || p.status === "OPEN");
-        const runningAgentHandles = Array.from(
+    const runPolling = async () => {
+      while (!isCancelled && isListeningRef.current) {
+        // 1. Only positions that are active ("OPEN") or not started yet ("ARMED")
+        // STRICT REQUIREMENT: Do not fetch for Paused positions!
+        const currentActivePositions = positionsRef.current.filter(
+          (p) => p.status === "ARMED" || p.status === "OPEN"
+        );
+        const runningHandles = Array.from(
           new Set(
-            activePositions
+            currentActivePositions
               .map((p) => p.targetHandle.replace("@", "").trim())
               .filter(Boolean)
           )
         );
 
-        // Strictly listen to running agent accounts only if any exist
-        const handlesToPoll =
-          runningAgentHandles.length > 0
-            ? runningAgentHandles
-            : [intent.targetHandle?.replace("@", "").trim()].filter(Boolean);
+        if (runningHandles.length === 0) {
+          // All positions are paused or closed, or no positions exist yet.
+          // Strictly do not fetch tweets for any account.
+          setCurrentPollingHandle("");
+          setQueueProgress({ current: 0, total: 0 });
+          for (let s = 3; s > 0; s--) {
+            if (isCancelled || !isListeningRef.current) break;
+            setPollCountdown(s);
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+          continue;
+        }
 
-        setQueueProgress({ current: 0, total: handlesToPoll.length });
+        // 2. Process each running handle sequentially
+        setQueueProgress({ current: 0, total: runningHandles.length });
 
-        // 3. Process each agent handle sequentially in queue with an exact 1-second delay
-        for (let i = 0; i < handlesToPoll.length; i++) {
-          if (!isListeningRef.current) break;
+        for (let i = 0; i < runningHandles.length; i++) {
+          if (isCancelled || !isListeningRef.current) break;
 
-          const handle = handlesToPoll[i];
+          const handle = runningHandles[i];
           setCurrentPollingHandle(handle);
-          setQueueProgress({ current: i + 1, total: handlesToPoll.length });
+          setQueueProgress({ current: i + 1, total: runningHandles.length });
 
-          // Find earliest creation timestamp among active agents for this handle
-          const activeForHandle = activePositions.filter(
+          const activeForHandle = currentActivePositions.filter(
             (p) => p.targetHandle.toLowerCase().replace("@", "").trim() === handle.toLowerCase()
           );
-          const agentCreatedAt =
+          const earliestCreatedAt =
             activeForHandle.length > 0
               ? activeForHandle.reduce(
                   (min, p) => (new Date(p.createdAt).getTime() < new Date(min).getTime() ? p.createdAt : min),
@@ -625,18 +655,23 @@ function TerminalContent() {
           if (sinceId) {
             url += `&sinceId=${encodeURIComponent(sinceId)}`;
           }
-          if (agentCreatedAt) {
-            url += `&createdAfter=${encodeURIComponent(agentCreatedAt)}`;
+          if (earliestCreatedAt) {
+            url += `&createdAfter=${encodeURIComponent(earliestCreatedAt)}`;
           }
 
           try {
+            const headers: Record<string, string> = {};
+            if (apiKeys.twitterToken) {
+              headers["x-twitter-token"] = apiKeys.twitterToken;
+            }
+
             const res = await fetch(url, { headers });
             const data = await res.json();
 
-            if (data.success && data.tweets && data.tweets.length > 0) {
-              // Client-side strict filter: only tweets created strictly after agent creation
-              const validTweets = agentCreatedAt
-                ? data.tweets.filter((t: DetectedTweet) => new Date(t.createdAt).getTime() > new Date(agentCreatedAt!).getTime())
+            if (data.success && Array.isArray(data.tweets) && data.tweets.length > 0) {
+              const minTime = earliestCreatedAt ? new Date(earliestCreatedAt).getTime() : 0;
+              const validTweets = minTime > 0
+                ? data.tweets.filter((t: DetectedTweet) => new Date(t.createdAt).getTime() > minTime)
                 : data.tweets;
 
               if (validTweets.length > 0) {
@@ -645,44 +680,42 @@ function TerminalContent() {
                 setLastTweetId(freshTweet.id);
                 setLatestTweet(freshTweet);
 
-                // Evaluate tweet sentiment & execute trade if agent is armed
+                setMonitoredTweets((prev) => {
+                  const merged = [freshTweet, ...prev.filter((p) => p.id !== freshTweet.id)];
+                  return merged.slice(0, 20);
+                });
+
                 await processTweetEvaluation(freshTweet);
               }
             }
-          } catch (pollErr) {
-            console.warn(`Error polling handle @${handle}:`, pollErr);
+          } catch (err) {
+            console.warn(`Error polling handle @${handle}:`, err);
           }
 
-          // Strict 1-second delay between handles in the queue to guarantee zero rate-limiting
-          if (i < handlesToPoll.length - 1 && isListeningRef.current) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+          if (i < runningHandles.length - 1 && !isCancelled && isListeningRef.current) {
+            await new Promise((r) => setTimeout(r, 1000));
           }
         }
-      } catch (err) {
-        console.warn("Poll queue cycle error:", err);
-      } finally {
+
+        if (isCancelled || !isListeningRef.current) break;
         setCurrentPollingHandle("");
-        isPollingRef.current = false;
+
+        // 3. Calm countdown between cycles (5 seconds)
+        for (let s = 5; s > 0; s--) {
+          if (isCancelled || !isListeningRef.current) break;
+          setPollCountdown(s);
+          await new Promise((r) => setTimeout(r, 1000));
+        }
       }
     };
 
-    // Run initial queue cycle immediately
-    runPollingQueue();
+    runPolling();
 
-    // Countdown and repeat queue every 3 seconds
-    let secondsLeft = 3;
-    const interval = setInterval(() => {
-      secondsLeft -= 1;
-      if (secondsLeft <= 0) {
-        secondsLeft = 3;
-        runPollingQueue();
-      }
-      setPollCountdown(secondsLeft);
-    }, 1000);
-
-    pollTimerRef.current = interval;
-    return () => clearInterval(interval);
-  }, [isListening, isPositionsLoaded, intent.targetHandle, apiKeys.twitterToken, processTweetEvaluation]);
+    return () => {
+      isCancelled = true;
+      setCurrentPollingHandle("");
+    };
+  }, [isListening, isPositionsLoaded, apiKeys.twitterToken, processTweetEvaluation]);
 
   // Fetch latest tweet from a specific person/handle end-to-end (for interactive test)
   const handleFetchTweetFromPerson = async (targetHandle: string) => {
@@ -719,14 +752,21 @@ function TerminalContent() {
           lastTweetIdsRef.current[clean] = freshTweet.id;
           setLastTweetId(freshTweet.id);
           setLatestTweet(freshTweet);
+          setMonitoredTweets((prev) => [freshTweet, ...prev.filter((p) => p.id !== freshTweet.id)]);
           await processTweetEvaluation(freshTweet);
         } else {
-          setSkipReason(`No new tweets from @${clean} posted after agent deployment (${new Date(agentCreatedAt!).toLocaleTimeString()}).`);
+          setSkipReason(
+            agentCreatedAt
+              ? `No new tweets from @${clean} posted after trade setup (${new Date(agentCreatedAt!).toLocaleTimeString()}).`
+              : `No recent tweets from @${clean} found in the last 24 hours.`
+          );
         }
       } else {
-        if (agentCreatedAt) {
-          setSkipReason(`No new tweets from @${clean} posted after agent deployment (${new Date(agentCreatedAt).toLocaleTimeString()}).`);
-        }
+        setSkipReason(
+          agentCreatedAt
+            ? `No new tweets from @${clean} posted after trade setup (${new Date(agentCreatedAt!).toLocaleTimeString()}).`
+            : `No recent tweets from @${clean} found in the last 24 hours.`
+        );
       }
     } catch (err) {
       console.error("Fetch person tweet error:", err);
@@ -744,6 +784,7 @@ function TerminalContent() {
         const freshTweet = data.tweets[0];
         setLastTweetId(freshTweet.id);
         setLatestTweet(freshTweet);
+        setMonitoredTweets((prev) => [freshTweet, ...prev.filter((p) => p.id !== freshTweet.id)]);
         await processTweetEvaluation(freshTweet);
       }
     } catch (err) {
@@ -767,6 +808,7 @@ function TerminalContent() {
       if (data.success && data.tweet) {
         setLastTweetId(data.tweet.id);
         setLatestTweet(data.tweet);
+        setMonitoredTweets((prev) => [data.tweet, ...prev.filter((p) => p.id !== data.tweet.id)]);
         await processTweetEvaluation(data.tweet);
       }
     } catch (err) {
@@ -816,6 +858,16 @@ function TerminalContent() {
                     onExecuteExitSell={handleExecuteExitSell}
                     onEmergencySweep={handleEmergencySweep}
                     onTogglePausePosition={handleTogglePausePosition}
+                    onClosePosition={async (closedPos) => {
+                      setPositions((prev) =>
+                        prev.map((p) => (p.id === closedPos.id ? closedPos : p))
+                      );
+                      await persistPositionUpdate(closedPos);
+                      loadTrades();
+                      if (walletAddress) {
+                        handleRefreshBalances(walletAddress);
+                      }
+                    }}
                     connectedWallet={walletAddress}
                     onPositionUpdated={async (updatedPos) => {
                       setPositions((prev) =>
@@ -841,8 +893,8 @@ function TerminalContent() {
                           .filter(Boolean)
                       )
                     );
-                    const activeHandle = runningHandles.length > 0 ? runningHandles[0] : intent.targetHandle;
-                    const activeTrackedHandles = runningHandles.length > 0 ? runningHandles : [intent.targetHandle];
+                    const activeHandle = runningHandles.length > 0 ? runningHandles[0] : "";
+                    const activeTrackedHandles = runningHandles;
                     const earliestAgentCreatedAt =
                       activePositions.length > 0
                         ? activePositions.reduce(
@@ -855,6 +907,7 @@ function TerminalContent() {
                       <LiveMonitor
                         handle={activeHandle}
                         isListening={isListening}
+                        tweets={monitoredTweets}
                         latestTweet={latestTweet}
                         pollSecondsRemaining={pollCountdown}
                         onInjectTestTweet={handleInjectTestTweet}
@@ -867,6 +920,7 @@ function TerminalContent() {
                         onToggleListening={() => setIsListening(!isListening)}
                         agentCreatedAt={earliestAgentCreatedAt}
                         hasActiveAgents={activePositions.length > 0}
+                        hasPausedAgents={positions.some((p) => p.status === "PAUSED")}
                       />
                     );
                   })()}
@@ -894,22 +948,24 @@ function TerminalContent() {
 
         {/* TAB 2: PORTFOLIO */}
         {activeTab === "portfolio" && (
-          <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="space-y-6 animate-in fade-in duration-200 font-sans">
             {/* Real Onchain Wallet Overview */}
-            <div className="rounded-[32px] border border-slate-200/90 bg-white p-6 shadow-sm space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            <div className="rounded-[32px] border border-slate-200/90 bg-white p-6 sm:p-7 shadow-xs space-y-6">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-[18px] bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-2xs">
-                    <Wallet className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/80 shadow-2xs shrink-0">
+                    <Wallet className="w-5 h-5 stroke-[2.2]" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-slate-900">Arbitrum One Liquidity</h3>
-                      <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-                        Live RPC Verified
+                      <h3 className="text-base font-bold text-slate-900">Arbitrum Liquidity &amp; Net Worth</h3>
+                      <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 inline-flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Arbitrum One
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500">Real onchain token holdings and trade allocations on Arbitrum One</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Real on-chain balances and live trading allocations</p>
                   </div>
                 </div>
 
@@ -919,14 +975,14 @@ function TerminalContent() {
                       type="button"
                       disabled={isRefreshingPortfolio}
                       onClick={() => handleRefreshBalances()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition cursor-pointer disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-200/80 bg-slate-50 hover:bg-slate-100 text-xs font-medium text-slate-700 transition cursor-pointer disabled:opacity-50"
                       title="Re-query Arbitrum RPC for current balances"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${isRefreshingPortfolio ? "animate-spin" : ""}`} />
-                      <span>{isRefreshingPortfolio ? "Querying..." : "Refresh Balances"}</span>
+                      <span>{isRefreshingPortfolio ? "Refreshing..." : "Refresh"}</span>
                     </button>
                   )}
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  <span className="text-xs font-medium text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200/80 hidden sm:inline-block">
                     Chain ID 42161
                   </span>
                 </div>
@@ -935,19 +991,17 @@ function TerminalContent() {
               {walletAddress ? (
                 <>
                   {/* Master Account Header */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-blue-50/40 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                        Connected Funder Wallet (100% Custody)
-                      </span>
+                      <span className="text-xs text-slate-400 font-medium">Connected Funder Wallet</span>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="font-mono font-bold text-sm text-slate-900 truncate max-w-[280px] sm:max-w-none">
-                          {walletAddress}
+                        <span className="font-mono text-sm font-semibold text-slate-800">
+                          {walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}
                         </span>
                         <button
                           type="button"
                           onClick={copyWalletAddress}
-                          className="p-1 hover:bg-white rounded-md text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                          className="p-1 hover:bg-white rounded-md text-slate-400 hover:text-slate-700 transition cursor-pointer"
                           title="Copy Address"
                         >
                           {copiedWallet ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -964,66 +1018,49 @@ function TerminalContent() {
                       </div>
                     </div>
 
-                    <div className="text-left sm:text-right sm:border-l sm:border-slate-200/80 sm:pl-4">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                        Total Liquid Net Worth
-                      </span>
-                      <div className="font-mono font-black text-2xl text-slate-900 mt-0.5">
-                        ${walletBalances.totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                    <div className="sm:text-right">
+                      <span className="text-xs text-slate-400 font-medium">Total Liquid Net Worth</span>
+                      <div className="text-2xl font-bold tracking-tight text-slate-900 mt-0.5">
+                        ${walletBalances.totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
-                      <span className="text-[10px] text-slate-500 font-medium">
+                      <span className="text-[11px] text-slate-400">
                         Updated {walletBalances.lastUpdated || "just now"}
                       </span>
                     </div>
                   </div>
 
-                  {/* Real Assets Grid */}
+                  {/* Clean Assets Grid - Low Density & Minimal */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {/* Native ETH */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Arbitrum Native ETH</span>
-                        <span className="text-[10px] font-bold text-blue-700 bg-blue-100/60 px-1.5 py-0.5 rounded">Gas &amp; Base</span>
-                      </div>
-                      <div className="text-xl font-mono font-black text-slate-900">
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-1">
+                      <span className="text-xs text-slate-400 font-medium">Ethereum</span>
+                      <div className="text-xl font-bold text-slate-900">
                         {walletBalances.eth.toFixed(4)} ETH
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
-                        <span>${walletBalances.ethPriceUsd.toLocaleString()} / ETH</span>
-                        <span className="font-semibold text-slate-700">
-                          ${(walletBalances.eth * walletBalances.ethPriceUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
+                      <div className="text-xs text-slate-500">
+                        ${(walletBalances.eth * walletBalances.ethPriceUsd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
 
                     {/* Canonical USDC */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Arbitrum USDC</span>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded">Trade Collateral</span>
-                      </div>
-                      <div className="text-xl font-mono font-black text-slate-900">
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-1">
+                      <span className="text-xs text-slate-400 font-medium">USD Coin</span>
+                      <div className="text-xl font-bold text-slate-900">
                         ${walletBalances.usdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
-                        <span>0xaf88...5831</span>
-                        <span className="font-semibold text-emerald-700">$1.00 Peg</span>
+                      <div className="text-xs text-slate-500">
+                        Available Collateral
                       </div>
                     </div>
 
                     {/* Active Capital in Trades */}
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Capital in Trades</span>
-                        <span className="text-[10px] font-bold text-purple-700 bg-purple-100/60 px-1.5 py-0.5 rounded">
-                          {positions.filter((p) => p.status === "ARMED" || p.status === "OPEN").length} Active
-                        </span>
-                      </div>
-                      <div className="text-xl font-mono font-black text-slate-900">
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-1">
+                      <span className="text-xs text-slate-400 font-medium">Active in Trades</span>
+                      <div className="text-xl font-bold text-slate-900">
                         ${positions.filter((p) => p.status === "ARMED" || p.status === "OPEN").reduce((a, b) => a + b.sizeUsdc, 0).toLocaleString()} USDC
                       </div>
-                      <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
-                        Direct Delegated Spend
+                      <div className="text-xs text-slate-500">
+                        {positions.filter((p) => p.status === "ARMED" || p.status === "OPEN").length} positions armed
                       </div>
                     </div>
 
@@ -1033,18 +1070,13 @@ function TerminalContent() {
                       const realizedPnl = settled.reduce((a, b) => a + (b.pnlUsd || 0), 0);
                       const isPositive = realizedPnl >= 0;
                       return (
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Realized PnL</span>
-                            <span className="text-[10px] font-bold text-slate-600 bg-slate-200/70 px-1.5 py-0.5 rounded">
-                              {settled.length} Settled
-                            </span>
-                          </div>
-                          <div className={`text-xl font-mono font-black ${realizedPnl === 0 ? "text-slate-800" : isPositive ? "text-emerald-600" : "text-rose-600"}`}>
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-1">
+                          <span className="text-xs text-slate-400 font-medium">Realized Performance</span>
+                          <div className={`text-xl font-bold ${realizedPnl === 0 ? "text-slate-900" : isPositive ? "text-emerald-600" : "text-rose-600"}`}>
                             {realizedPnl === 0 ? "$0.00" : `${isPositive ? "+" : ""}$${realizedPnl.toFixed(2)}`}
                           </div>
-                          <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
-                            Flash Bracket Settled
+                          <div className="text-xs text-slate-500">
+                            {settled.length} settled trades
                           </div>
                         </div>
                       );
@@ -1052,20 +1084,20 @@ function TerminalContent() {
                   </div>
                 </>
               ) : (
-                <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-2xs">
-                    <Wallet className="w-6 h-6" />
+                <div className="py-12 px-6 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-100">
+                    <Wallet className="w-6 h-6 stroke-[2]" />
                   </div>
-                  <div className="max-w-md mx-auto">
+                  <div className="max-w-md mx-auto space-y-1">
                     <h4 className="text-base font-bold text-slate-900">No Web3 Wallet Connected</h4>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      Connect your Arbitrum wallet using the button in the top navigation to view your real onchain ETH, USDC, deployed catalyst allocations, and trade settlement history.
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Connect your Arbitrum wallet using the button in the top navigation to view your on-chain balances and trade allocations.
                     </p>
                   </div>
                   <div className="pt-1">
-                    <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 inline-flex items-center gap-1.5">
+                    <span className="text-xs font-medium text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200/80 inline-flex items-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                      <span>100% Non-Custodial • Zero Escrow Pre-Funding Required</span>
+                      <span>100% Non-Custodial • Zero Escrow Required</span>
                     </span>
                   </div>
                 </div>

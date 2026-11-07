@@ -16,6 +16,11 @@ import {
   Flame,
   ArrowRight,
   Cpu,
+  Layers,
+  Code2,
+  FileText,
+  Lock,
+  Sparkles,
 } from "lucide-react";
 import { isValidArkivKey } from "@/lib/arkiv";
 
@@ -42,6 +47,7 @@ export function ArkivEntityModal({
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "json">("overview");
 
   if (!isOpen || (!position && !trade)) return null;
 
@@ -50,6 +56,7 @@ export function ArkivEntityModal({
   const isConfirmedOnChain = isValidArkivKey(entityKey);
 
   const schemaName = position ? "xmarket.agent_intent" : "xmarket.agent_trade";
+  const schemaFriendlyName = position ? "Agent Trading Intent" : "Agent Trade Execution";
   const entityId = position?.id || trade?.id || "";
   const eventName = position?.eventName || trade?.eventName || "";
   const targetAsset = position?.targetAsset || trade?.targetAsset || "ETH";
@@ -112,13 +119,13 @@ export function ArkivEntityModal({
     navigator.clipboard.writeText(text);
     if (type === "key") {
       setCopiedKey(true);
-      setTimeout(() => setCopiedKey(false), 2000);
+      setTimeout(() => setCopiedKey(false), 1800);
     } else if (type === "tx") {
       setCopiedTx(true);
-      setTimeout(() => setCopiedTx(false), 2000);
+      setTimeout(() => setCopiedTx(false), 1800);
     } else {
       setCopiedJson(true);
-      setTimeout(() => setCopiedJson(false), 2000);
+      setTimeout(() => setCopiedJson(false), 1800);
     }
   };
 
@@ -156,9 +163,9 @@ export function ArkivEntityModal({
         );
       }
 
-      setSyncStatus("Prompting MetaMask network switch to Arkiv Rabdi Testnet...");
+      setSyncStatus("Prompting MetaMask network switch to Arkiv DB-Chain...");
 
-      // Ensure chain is Rabdi testnet (7794095 / 0x76edaf)
+      // Ensure chain is Rabdi chain (7794095 / 0x76edaf)
       try {
         await eth.request({
           method: "wallet_switchEthereumChain",
@@ -171,8 +178,8 @@ export function ArkivEntityModal({
             params: [
               {
                 chainId: "0x76edaf",
-                chainName: "Arkiv Rabdi Testnet",
-                nativeCurrency: { name: "Testnet GLM", symbol: "tGLM", decimals: 18 },
+                chainName: "Arkiv DB-Chain",
+                nativeCurrency: { name: "GLM", symbol: "GLM", decimals: 18 },
                 rpcUrls: ["https://rpc.rabdi.db-chain.testnet.arkiv.network"],
                 blockExplorerUrls: ["https://rabdi.explorer.arkiv.network"],
               },
@@ -197,14 +204,14 @@ export function ArkivEntityModal({
 
       if (balance === BigInt(0)) {
         throw new Error(
-          `Your wallet ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)} has 0 tGLM on Rabdi testnet. Please claim free tGLM from https://hub.arkiv.network/faucet first.`
+          `Your wallet ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)} has 0 GLM on Arkiv DB-Chain. Please fund your wallet via Arkiv Hub.`
         );
       }
 
       setSyncStatus("Broadcasting entity transaction to Rabdi DB-Chain...");
 
       // Write transaction via SDK client
-      const { createWalletClient, custom } = await import("viem");
+      const { custom } = await import("viem");
       const { rabdi } = await import("@arkiv-network/sdk/chains");
       const { createWalletClient: createArkivWallet, ExpirationTime } = await import("@arkiv-network/sdk");
       const { AgentIntentSchema, AgentTradeSchema } = await import("@/lib/arkiv");
@@ -248,35 +255,68 @@ export function ArkivEntityModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150 font-sans">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
-              <Database className="w-5 h-5" />
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20 shrink-0">
+              <Database className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-amber-700 uppercase tracking-wider">
+                <span className="text-xs font-bold text-amber-800 tracking-wide">
                   Arkiv DB-Chain
                 </span>
                 <span className="text-slate-300">•</span>
-                <span className="text-[11px] font-mono text-slate-500">
-                  Rabdi Testnet (7794095)
+                <span className="text-[11px] font-medium text-slate-500">
+                  Arkiv DB-Chain (7794095)
                 </span>
               </div>
-              <h3 className="text-base font-bold text-slate-900 font-mono flex items-center gap-1.5">
-                <span>{schemaName}</span>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 mt-0.5">
+                <span>{schemaFriendlyName}</span>
+                <span className="text-[11px] font-mono font-normal text-slate-500 px-2 py-0.5 rounded-md bg-slate-100">
+                  {schemaName}
+                </span>
               </h3>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tab Selector */}
+        <div className="px-6 pt-3 pb-1 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
+          <button
+            type="button"
+            onClick={() => setActiveTab("overview")}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "overview"
+                ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Entity Overview</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("json")}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "json"
+                ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            <Code2 className="w-3.5 h-3.5" />
+            <span>Raw Schema JSON</span>
           </button>
         </div>
 
@@ -284,9 +324,9 @@ export function ArkivEntityModal({
         <div className="p-6 overflow-y-auto space-y-5 text-sm">
           {/* Status Box */}
           {isConfirmedOnChain ? (
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
-              <div className="flex items-center justify-between mb-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+            <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-200/90 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   Verified on Rabdi DB-Chain
                 </span>
@@ -296,24 +336,24 @@ export function ArkivEntityModal({
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
                 >
-                  <span>Open in Arkiv Explorer</span>
+                  <span>Open in Explorer</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
 
-              <div className="space-y-1.5 text-xs font-mono">
-                <div className="flex items-center justify-between bg-white/80 p-2 rounded-lg border border-emerald-100">
-                  <span className="text-slate-500 flex items-center gap-1">
-                    <Key className="w-3 h-3 text-emerald-600" /> Entity Key:
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between bg-white/90 p-2.5 rounded-xl border border-emerald-100">
+                  <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-emerald-600" /> Entity ID:
                   </span>
-                  <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                    <span>
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                    <span className="font-mono text-[11px]">
                       {entityKey?.slice(0, 10)}...{entityKey?.slice(-8)}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleCopy(entityKey || "", "key")}
-                      className="text-slate-400 hover:text-slate-700 p-0.5"
+                      className="text-slate-400 hover:text-slate-700 p-1 rounded transition"
                       title="Copy entity key"
                     >
                       {copiedKey ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
@@ -322,23 +362,23 @@ export function ArkivEntityModal({
                 </div>
 
                 {txHash && (
-                  <div className="flex items-center justify-between bg-white/80 p-2 rounded-lg border border-emerald-100">
-                    <span className="text-slate-500 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600" /> Tx Hash:
+                  <div className="flex items-center justify-between bg-white/90 p-2.5 rounded-xl border border-emerald-100">
+                    <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Minted Tx:
                     </span>
-                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-800">
                       <a
                         href={`https://rabdi.explorer.arkiv.network/tx/${txHash}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-emerald-700 hover:underline"
+                        className="text-emerald-700 hover:underline font-mono text-[11px]"
                       >
                         {txHash.slice(0, 10)}...{txHash.slice(-8)}
                       </a>
                       <button
                         type="button"
                         onClick={() => handleCopy(txHash || "", "tx")}
-                        className="text-slate-400 hover:text-slate-700 p-0.5"
+                        className="text-slate-400 hover:text-slate-700 p-1 rounded transition"
                       >
                         {copiedTx ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                       </button>
@@ -348,30 +388,29 @@ export function ArkivEntityModal({
               </div>
             </div>
           ) : (
-            <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200">
-              <div className="flex items-start gap-2.5">
-                <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+            <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/90 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5">
                   <Flame className="w-4 h-4 text-amber-600" />
                 </div>
                 <div className="space-y-1 text-xs">
                   <div className="font-bold text-amber-900 text-sm">
-                    Ephemeral Agent State — Ready for Rabdi DB-Chain
+                    Ephemeral Coordinator State — Ready for Rabdi DB-Chain
                   </div>
-                  <p className="text-amber-800/90 leading-relaxed">
-                    This intent is currently saved in local coordinator storage. Arkiv is an Ethereum-aligned
-                    database where entities live on-chain, are owned by your wallet, and expire automatically after 30 days.
-                    Writing this entity to Rabdi testnet requires a micro-fee in testnet <span className="font-bold">tGLM</span>.
+                  <p className="text-amber-800/90 leading-relaxed font-normal">
+                    This intent is currently saved in local coordinator memory. Arkiv is an Ethereum-aligned
+                    database where entities live directly on-chain, are owned by your wallet, and expire automatically after 30 days.
                   </p>
                 </div>
               </div>
 
               {/* Sync Actions */}
-              <div className="mt-3.5 pt-3 border-t border-amber-200/60 flex flex-wrap items-center gap-2">
+              <div className="pt-2 border-t border-amber-200/60 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={handleSyncToArkiv}
                   disabled={isSyncing}
-                  className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-semibold text-xs transition inline-flex items-center gap-1.5 shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-semibold text-xs transition inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
                   <span>{isSyncing ? "Broadcasting..." : "Broadcast to Rabdi DB-Chain"}</span>
@@ -381,9 +420,9 @@ export function ArkivEntityModal({
                   href="https://hub.arkiv.network/faucet"
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-white hover:bg-amber-100 text-amber-800 border border-amber-200 font-medium text-xs transition inline-flex items-center gap-1"
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-amber-100/70 text-amber-800 border border-amber-200 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-2xs"
                 >
-                  <span>Claim Free tGLM Faucet</span>
+                  <span>Claim Free tGLM</span>
                   <ExternalLink className="w-3 h-3 text-amber-600" />
                 </a>
 
@@ -394,23 +433,23 @@ export function ArkivEntityModal({
                       onClose();
                       onNavigateToTerminalArkiv();
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-medium text-xs transition inline-flex items-center gap-1"
+                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
                   >
-                    <span>Arkiv SQL Explorer</span>
+                    <span>Storage Panel</span>
                     <ArrowRight className="w-3 h-3 text-slate-500" />
                   </button>
                 )}
               </div>
 
               {syncStatus && (
-                <div className="mt-2.5 p-2 rounded-lg bg-white/90 border border-amber-200 text-[11px] font-mono text-amber-900 flex items-center gap-1.5">
-                  <Check className="w-3 h-3 text-emerald-600" />
-                  <span>{syncStatus}</span>
+                <div className="p-2.5 rounded-xl bg-white/90 border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
+                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="font-medium">{syncStatus}</span>
                 </div>
               )}
 
               {syncError && (
-                <div className="mt-2.5 p-2 rounded-lg bg-rose-50 border border-rose-200 text-[11px] text-rose-700 flex items-start gap-1.5">
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
                   <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
                   <span>{syncError}</span>
                 </div>
@@ -418,92 +457,107 @@ export function ArkivEntityModal({
             </div>
           )}
 
-          {/* Structured Attributes Grid */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">
-                Entity Indexed Attributes
-              </span>
-              <button
-                type="button"
-                onClick={() => handleCopy(JSON.stringify(entityPayload, null, 2), "json")}
-                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-mono"
-              >
-                {copiedJson ? (
-                  <>
-                    <Check className="w-3 h-3 text-emerald-600" />
-                    <span>Copied JSON</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    <span>Copy JSON</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-mono block">Event / Market</span>
-                <span className="font-semibold text-slate-900 truncate block">{eventName}</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-mono block">Asset Pair</span>
-                <span className="font-semibold text-slate-900">{targetAsset} / {contraAsset}</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-mono block">Strategy Side</span>
-                <span className="font-semibold text-blue-600">{side} BRACKET</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-mono block">Allocation</span>
-                <span className="font-semibold text-slate-900">${sizeUsdc} USDC</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-mono block">Lifecycle Status</span>
-                <span className="font-semibold text-emerald-700">{status}</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-[10px] text-slate-400 uppercase font-mono block flex items-center gap-1">
-                  <Clock className="w-2.5 h-2.5 text-amber-500" /> Arkiv Expiration
+          {activeTab === "overview" ? (
+            <div className="space-y-4">
+              <div>
+                <span className="text-xs font-bold text-slate-700 tracking-wide block mb-2">
+                  Core Strategy Parameters
                 </span>
-                <span className="font-semibold text-slate-900">30 Days (Block TTL)</span>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Market Catalyst</span>
+                    <span className="font-bold text-slate-900 truncate block mt-0.5">{eventName}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Asset Pair</span>
+                    <span className="font-bold text-slate-900 mt-0.5 block">{targetAsset} / {contraAsset}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Strategy Side</span>
+                    <span className="font-bold text-blue-600 mt-0.5 block">{side === "SHORT" ? "Short" : "Long"}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Capital Allocated</span>
+                    <span className="font-bold text-slate-900 mt-0.5 block">${sizeUsdc} USDC</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Lifecycle Status</span>
+                    <span className="font-bold text-emerald-700 mt-0.5 block">{status === "ARMED" ? "waiting" : status}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5 text-amber-500" /> Arkiv Expiration
+                    </span>
+                    <span className="font-bold text-slate-900 mt-0.5 block">30 Days (Block TTL)</span>
+                  </div>
+                </div>
+
+                {/* Cryptographic Ownership Card */}
+                <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Cpu className="w-4 h-4 text-blue-600" />
+                    <span>Agent Smart Account:</span>
+                    <span className="text-slate-900 font-semibold font-mono text-[11px]">{agentWallet}</span>
+                  </div>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold">
+                    Cryptographic Owner
+                  </span>
+                </div>
+              </div>
+
+              {/* ETHGlobal Mumbai Track Compliance Notice */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50/60 to-slate-50 border border-amber-100 text-xs text-slate-600 space-y-1.5">
+                <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>ETHGlobal Mumbai — Build on Arkiv (from scratch) Track</span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-normal">
+                  Autonomous agents coordinate through ephemeral entities with SQL-like queryable attributes and
+                  cryptographic ownership. Each entity automatically expires when its trading deadline is reached,
+                  protecting users against stale executions without centralized cron jobs.
+                </p>
               </div>
             </div>
-
-            {/* Wallet Ownership */}
-            <div className="mt-2 p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs flex flex-wrap items-center justify-between gap-1">
-              <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[11px]">
-                <Cpu className="w-3.5 h-3.5 text-blue-600" />
-                <span>Agent Wallet:</span>
-                <span className="text-slate-800 font-bold">{agentWallet}</span>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Typed Attribute Payload
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(JSON.stringify(entityPayload, null, 2), "json")}
+                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-semibold"
+                >
+                  {copiedJson ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Copied JSON</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy JSON</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 font-bold font-mono">
-                Cryptographic Owner
-              </span>
-            </div>
-          </div>
 
-          {/* ETHGlobal Mumbai Track Compliance Notice */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-500 space-y-1">
-            <div className="font-semibold text-slate-700 flex items-center gap-1.5">
-              <span>🧩 ETHGlobal Mumbai — Build on Arkiv (from scratch) Track</span>
+              <pre className="p-4 rounded-2xl bg-slate-900 text-slate-100 text-xs font-mono overflow-x-auto max-h-72 border border-slate-800">
+                {JSON.stringify(entityPayload, null, 2)}
+              </pre>
             </div>
-            <p>
-              Autonomous agents coordinate through ephemeral entities with SQL-like queryable attributes and
-              cryptographic ownership. Each entity automatically expires when its trading deadline is reached.
-            </p>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+        <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs">
           <a
             href="https://rabdi.explorer.arkiv.network"
             target="_blank"
             rel="noreferrer"
-            className="text-slate-500 hover:text-slate-800 flex items-center gap-1"
+            className="text-slate-500 hover:text-slate-800 flex items-center gap-1.5 font-medium transition"
           >
             <span>Rabdi Block Explorer</span>
             <ExternalLink className="w-3 h-3 text-slate-400" />
@@ -511,13 +565,12 @@ export function ArkivEntityModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-medium transition"
+            className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold transition active:scale-95 cursor-pointer"
           >
-            Close
+            Done
           </button>
         </div>
       </div>
     </div>
   );
 }
-

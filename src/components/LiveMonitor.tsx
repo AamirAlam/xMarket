@@ -16,7 +16,8 @@ import {
 interface LiveMonitorProps {
   handle?: string;
   isListening?: boolean;
-  latestTweet: DetectedTweet | null;
+  tweets?: DetectedTweet[];
+  latestTweet?: DetectedTweet | null;
   pollSecondsRemaining?: number;
   onInjectTestTweet?: (text: string) => void;
   onFetchTweetByUrl?: (url: string) => void;
@@ -28,6 +29,7 @@ interface LiveMonitorProps {
   onToggleListening?: () => void;
   agentCreatedAt?: string;
   hasActiveAgents?: boolean;
+  hasPausedAgents?: boolean;
 }
 
 interface AuthorProfile {
@@ -86,6 +88,54 @@ const AUTHOR_PROFILES: Record<string, AuthorProfile> = {
     avatar: "/avatars/brian.jpg",
     verified: true,
   },
+  watcherguru: {
+    name: "Watcher.Guru",
+    handle: "WatcherGuru",
+    avatar: "/avatars/watcherguru.png",
+    verified: true,
+  },
+  cryptohayes: {
+    name: "Arthur Hayes",
+    handle: "CryptoHayes",
+    avatar: "/avatars/hayes.jpg",
+    verified: true,
+  },
+  whale_alert: {
+    name: "Whale Alert",
+    handle: "whale_alert",
+    avatar: "/avatars/whale_alert.png",
+    verified: true,
+  },
+  ericbalchunas: {
+    name: "Eric Balchunas",
+    handle: "EricBalchunas",
+    avatar: "/avatars/balchunas.jpg",
+    verified: true,
+  },
+  cathiedwood: {
+    name: "Cathie Wood",
+    handle: "CathieDWood",
+    avatar: "/avatars/cathie.jpg",
+    verified: true,
+  },
+  muststopmurad: {
+    name: "Murad",
+    handle: "MustStopMurad",
+    avatar: "/avatars/murad.jpg",
+    verified: true,
+  },
+  cobie: {
+    name: "Cobie",
+    handle: "cobie",
+    avatar: "/avatars/cobie.jpg",
+    verified: true,
+  },
+  zachxbt: {
+    name: "ZachXBT",
+    handle: "zachxbt",
+    avatar: "/avatars/zachxbt.jpg",
+    verified: true,
+  },
 };
 
 function getAuthorProfile(handle: string): AuthorProfile {
@@ -109,21 +159,82 @@ function getAuthorProfile(handle: string): AuthorProfile {
   };
 }
 
-// 2 Max Initial Tweets
-const DEFAULT_EVENT_TWEETS: DetectedTweet[] = [
+// Dynamic pool of top market catalyst tweets that stream in realtime when no trade is active
+const DUMMY_STREAM_POOL: Array<{ author: string; text: string; url: string }> = [
   {
-    id: "tw-fomc-101",
+    author: "elonmusk",
+    text: "Tesla AI and Grok integration deploying ahead of schedule. Compute efficiency reached new all-time high.",
+    url: "https://x.com/elonmusk",
+  },
+  {
     author: "federalreserve",
     text: "FOMC statement: The Committee decided to lower the target range for the federal funds rate by 50 basis points. Economic indicators resilient, cooling inflation.",
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
     url: "https://x.com/federalreserve",
   },
   {
-    id: "tw-vitalik-102",
     author: "VitalikButerin",
     text: "Pectra hardfork specifications finalized for devnet testing. Layer 1 scalability improvements on track.",
-    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
     url: "https://x.com/VitalikButerin",
+  },
+  {
+    author: "saylor",
+    text: "MicroStrategy has acquired an additional 12,500 BTC for ~$1.1 billion. Bitcoin is institutional-grade capital.",
+    url: "https://x.com/saylor",
+  },
+  {
+    author: "cz_binance",
+    text: "Binance SAFU fund reserves fully backed 1:1 onchain. All user balances transparent on Merkle proof reserves.",
+    url: "https://x.com/cz_binance",
+  },
+  {
+    author: "realDonaldTrump",
+    text: "Crypto and Bitcoin will thrive in America! We will make the USA the undisputed crypto capital of the planet.",
+    url: "https://x.com/realDonaldTrump",
+  },
+  {
+    author: "brian_armstrong",
+    text: "Coinbase Base L2 processed over 10M transactions yesterday at $0.001 fee. Onchain is the new online.",
+    url: "https://x.com/brian_armstrong",
+  },
+  {
+    author: "WatcherGuru",
+    text: "JUST IN: Global institutional inflows into Bitcoin and crypto funds surge to record weekly highs.",
+    url: "https://x.com/WatcherGuru",
+  },
+  {
+    author: "CryptoHayes",
+    text: "Global fiat debasement continues. Dollar liquidity expansion accelerating. BTC is the apex asset.",
+    url: "https://x.com/CryptoHayes",
+  },
+  {
+    author: "whale_alert",
+    text: "🚨 2,450 #BTC ($214,800,000 USD) transferred from Coinbase Institutional to unknown cold wallet.",
+    url: "https://x.com/whale_alert",
+  },
+  {
+    author: "EricBalchunas",
+    text: "Bitcoin ETF daily inflow crossed $680M yesterday. BlackRock IBIT volume hitting top decile of all US ETFs.",
+    url: "https://x.com/EricBalchunas",
+  },
+  {
+    author: "CathieDWood",
+    text: "ARK Invest research: Digital assets and autonomous agents are converging to create unprecedented economic velocity.",
+    url: "https://x.com/CathieDWood",
+  },
+  {
+    author: "MustStopMurad",
+    text: "The momentum behind decentralized AI agents is unstoppable. Culture + compute = onchain velocity.",
+    url: "https://x.com/MustStopMurad",
+  },
+  {
+    author: "cobie",
+    text: "Market volatility picking up across major pairs. Make sure your stop-loss and take-profit brackets are properly set.",
+    url: "https://x.com/cobie",
+  },
+  {
+    author: "zachxbt",
+    text: "Verified on Arbitrum: Smart contract router permits confirm all trader assets remain non-custodial.",
+    url: "https://x.com/zachxbt",
   },
 ];
 
@@ -170,7 +281,8 @@ function formatTwitterTime(dateStr: string): string {
     const now = new Date();
     const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffSec < 60) return "just now";
+    if (diffSec < 6) return "just now";
+    if (diffSec < 60) return `${Math.max(1, diffSec)}s`;
     const diffMin = Math.floor(diffSec / 60);
     if (diffMin < 60) return `${diffMin}m`;
     const diffHour = Math.floor(diffMin / 60);
@@ -213,10 +325,11 @@ function formatTweetText(text: string) {
 }
 
 export function LiveMonitor({
-  handle = "federalreserve",
+  handle = "",
   isListening = true,
+  tweets,
   latestTweet,
-  pollSecondsRemaining = 3,
+  pollSecondsRemaining = 5,
   onInjectTestTweet,
   onFetchTweetByUrl,
   onFetchTweetFromPerson,
@@ -227,11 +340,12 @@ export function LiveMonitor({
   onToggleListening,
   agentCreatedAt,
   hasActiveAgents = false,
+  hasPausedAgents = false,
 }: LiveMonitorProps) {
-  // If active agents exist, do NOT show default/old mock tweets; start empty or with tweets created after agent deployment
-  const [tweetFeed, setTweetFeed] = useState<DetectedTweet[]>(() =>
-    hasActiveAgents ? [] : DEFAULT_EVENT_TWEETS
-  );
+  // Use passed tweets from props as primary source of truth; maintain local state as fallback
+  const [localTweets, setLocalTweets] = useState<DetectedTweet[]>([]);
+  const tweetFeed = tweets !== undefined ? tweets : localTweets;
+
   const [likedTweets, setLikedTweets] = useState<Record<string, boolean>>({});
   const [retweetedTweets, setRetweetedTweets] = useState<Record<string, boolean>>({});
   const [personInput, setPersonInput] = useState<string>("");
@@ -241,83 +355,114 @@ export function LiveMonitor({
   // Clean and deduplicate tracked handles (strictly focus on running agents if any)
   const cleanTrackedHandles = Array.from(
     new Set(
-      (trackedHandles.length > 0 ? trackedHandles : [handle])
+      trackedHandles
         .filter(Boolean)
-        .map((h) => h?.replace("@", "").trim())
+        .map((h) => h?.replace("@", "").trim().toLowerCase())
         .filter((h) => h && h.length > 0)
     )
   );
 
-  // When active agents are armed or deployed, strictly purge any old tweets created before agent creation
+  const activeHandlesSet = new Set(cleanTrackedHandles);
+
+  // STRICT REQUIREMENT:
+  // When active or looking positions exist: show ONLY real fetched tweets for those positions (no other tweets, no dummy tweets)
+  // When no active or looking positions exist: show live moving market stream from top catalysts
+  const hasActiveOrLooking = cleanTrackedHandles.length > 0;
+
+  const realActiveTweets = (tweetFeed || []).filter((tweet) => {
+    const authorClean = tweet.author?.replace("@", "").trim().toLowerCase();
+    return activeHandlesSet.has(authorClean);
+  });
+
+  // Dynamic market streaming feed when no trades are active/looking
+  const [streamingDummyTweets, setStreamingDummyTweets] = useState<DetectedTweet[]>(() => {
+    const now = Date.now();
+    return [
+      {
+        id: `tw-preview-init-0`,
+        author: DUMMY_STREAM_POOL[0].author,
+        text: DUMMY_STREAM_POOL[0].text,
+        createdAt: new Date(now - 7000).toISOString(),
+        url: DUMMY_STREAM_POOL[0].url,
+      },
+      {
+        id: `tw-preview-init-1`,
+        author: DUMMY_STREAM_POOL[1].author,
+        text: DUMMY_STREAM_POOL[1].text,
+        createdAt: new Date(now - 32000).toISOString(),
+        url: DUMMY_STREAM_POOL[1].url,
+      },
+      {
+        id: `tw-preview-init-2`,
+        author: DUMMY_STREAM_POOL[2].author,
+        text: DUMMY_STREAM_POOL[2].text,
+        createdAt: new Date(now - 85000).toISOString(),
+        url: DUMMY_STREAM_POOL[2].url,
+      },
+      {
+        id: `tw-preview-init-3`,
+        author: DUMMY_STREAM_POOL[3].author,
+        text: DUMMY_STREAM_POOL[3].text,
+        createdAt: new Date(now - 170000).toISOString(),
+        url: DUMMY_STREAM_POOL[3].url,
+      },
+    ];
+  });
+
+  const [newlyArrivedId, setNewlyArrivedId] = useState<string | null>(null);
+  const [marketScanningHandle, setMarketScanningHandle] = useState<string>("elonmusk");
+  const poolIndexRef = useRef<number>(4);
+  const [, setTimeTick] = useState<number>(0);
+
+  // Re-render time tick every 2s so "just now" / "6s" / "18s" updates live in realtime
   useEffect(() => {
-    if (hasActiveAgents) {
-      if (agentCreatedAt) {
-        const minTime = new Date(agentCreatedAt).getTime();
-        setTweetFeed((prev) =>
-          prev.filter(
-            (t) =>
-              t.id !== "tw-fomc-101" &&
-              t.id !== "tw-vitalik-102" &&
-              new Date(t.createdAt).getTime() > minTime
-          )
-        );
-      } else {
-        setTweetFeed((prev) =>
-          prev.filter((t) => t.id !== "tw-fomc-101" && t.id !== "tw-vitalik-102")
-        );
+    const tickTimer = setInterval(() => {
+      setTimeTick((t) => t + 1);
+    }, 2000);
+    return () => clearInterval(tickTimer);
+  }, []);
+
+  // When no trades are active, actively stream new market tweets every 3.8 seconds so it feels alive
+  useEffect(() => {
+    if (hasActiveOrLooking || !isListening) {
+      return;
+    }
+
+    const streamTimer = setInterval(() => {
+      const nextItem = DUMMY_STREAM_POOL[poolIndexRef.current % DUMMY_STREAM_POOL.length];
+      poolIndexRef.current += 1;
+
+      setMarketScanningHandle(nextItem.author);
+
+      const freshId = `tw-stream-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const freshTweet: DetectedTweet = {
+        id: freshId,
+        author: nextItem.author,
+        text: nextItem.text,
+        createdAt: new Date().toISOString(),
+        url: nextItem.url,
+      };
+
+      setStreamingDummyTweets((prev) => [freshTweet, ...prev.slice(0, 14)]);
+      setNewlyArrivedId(freshId);
+
+      setTimeout(() => {
+        setNewlyArrivedId((cur) => (cur === freshId ? null : cur));
+      }, 2400);
+    }, 3800);
+
+    return () => clearInterval(streamTimer);
+  }, [hasActiveOrLooking, isListening]);
+
+  const visibleTweets = hasActiveOrLooking ? realActiveTweets : streamingDummyTweets;
+
+  // Sync latestTweet into local state if props tweets not supplied
+  useEffect(() => {
+    if (tweets === undefined && latestTweet) {
+      const authorClean = latestTweet.author?.replace("@", "").trim().toLowerCase();
+      if (!activeHandlesSet.has(authorClean)) {
+        return;
       }
-    }
-  }, [hasActiveAgents, agentCreatedAt]);
-
-  // Automatically fetch live tweets for the active running agent handle (filtering strictly for tweets published after agent creation)
-  useEffect(() => {
-    const primaryHandle = cleanTrackedHandles[0];
-    if (!primaryHandle) return;
-
-    let url = `/api/agent/listen?handle=${encodeURIComponent(primaryHandle)}`;
-    if (agentCreatedAt) {
-      url += `&createdAfter=${encodeURIComponent(agentCreatedAt)}`;
-    }
-
-    fetch(url)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.tweets && data.tweets.length > 0) {
-          const minTime = agentCreatedAt ? new Date(agentCreatedAt).getTime() : 0;
-          const freshOnly = minTime > 0
-            ? data.tweets.filter((t: DetectedTweet) => new Date(t.createdAt).getTime() > minTime)
-            : data.tweets;
-
-          if (freshOnly.length > 0) {
-            setTweetFeed((prev) => {
-              const liveTweets = freshOnly.slice(0, 5);
-              const nonDefaultPrev = prev.filter(
-                (p) =>
-                  p.id !== "tw-fomc-101" &&
-                  p.id !== "tw-vitalik-102" &&
-                  (minTime === 0 || new Date(p.createdAt).getTime() > minTime)
-              );
-              const merged = [...liveTweets];
-              for (const t of nonDefaultPrev) {
-                if (!merged.some((m) => m.id === t.id)) {
-                  merged.push(t);
-                }
-              }
-              return merged;
-            });
-          } else if (hasActiveAgents) {
-            setTweetFeed([]);
-          }
-        } else if (hasActiveAgents) {
-          setTweetFeed([]);
-        }
-      })
-      .catch(() => {});
-  }, [cleanTrackedHandles[0], agentCreatedAt, hasActiveAgents]);
-
-  // When latestTweet updates, only prepend it if it was created AFTER agent creation
-  useEffect(() => {
-    if (latestTweet) {
       if (agentCreatedAt) {
         const minTime = new Date(agentCreatedAt).getTime();
         const tweetTime = new Date(latestTweet.createdAt).getTime();
@@ -325,14 +470,14 @@ export function LiveMonitor({
           return;
         }
       }
-      setTweetFeed((prev) => {
+      setLocalTweets((prev) => {
         if (prev.some((t) => t.id === latestTweet.id || t.text === latestTweet.text)) {
           return prev;
         }
         return [latestTweet, ...prev];
       });
     }
-  }, [latestTweet, agentCreatedAt]);
+  }, [tweets, latestTweet, agentCreatedAt, activeHandlesSet]);
 
   const toggleLike = (id: string) => {
     setLikedTweets((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -342,304 +487,199 @@ export function LiveMonitor({
     setRetweetedTweets((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handlePersonSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = personInput.trim();
-    if (!val) return;
-    if (val.startsWith("http://") || val.startsWith("https://")) {
-      if (onFetchTweetByUrl) onFetchTweetByUrl(val);
-    } else {
-      if (onFetchTweetFromPerson) onFetchTweetFromPerson(val);
-    }
-  };
-
   return (
     <div className="rounded-[28px] border border-slate-200/90 bg-white p-5 shadow-sm flex flex-col h-[560px] relative overflow-hidden">
-      {/* Header: Twitter/X Style Events Tracking & Controls */}
+      {/* Header: X event tracking */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-xs">
             <XLogo className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5">
-              <span>Events Tracking</span>
-              <span className={`w-1.5 h-1.5 rounded-full ${isListening ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+            <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+              <span>X event tracking</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${isListening && cleanTrackedHandles.length > 0 ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
             </h3>
-            <p className="text-[11px] text-slate-500 font-medium">Real-time social intelligence feed</p>
+            <p className="text-[11px] text-slate-500 font-medium">Real-time updates for active and waiting trades</p>
           </div>
-        </div>
-
-        {/* Toggle Listening Button */}
-        {onToggleListening ? (
-          <button
-            type="button"
-            onClick={onToggleListening}
-            title={isListening ? "Pause live stream" : "Resume live stream"}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition shadow-2xs cursor-pointer ${
-              isListening
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${isListening ? "bg-emerald-500 animate-ping" : "bg-slate-400"}`} />
-            <span>{isListening ? "Live Queue" : "Radar Paused"}</span>
-          </button>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border border-blue-200 bg-blue-50 text-blue-700 shadow-2xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
-            <span>Live Radar</span>
-          </span>
-        )}
-      </div>
-
-      {/* Monitored Agents Queue Bar */}
-      {cleanTrackedHandles.length > 0 && (
-        <div className="py-2 px-0.5 flex items-center gap-1.5 overflow-x-auto text-[11px] border-b border-slate-100 shrink-0 scrollbar-none">
-          <span className="text-slate-400 font-semibold shrink-0">Agents:</span>
-          {cleanTrackedHandles.map((h) => {
-            const isCurrentlyPolled = currentCheckingHandle?.toLowerCase() === h.toLowerCase();
-            return (
-              <span
-                key={h}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg transition shrink-0 ${
-                  isCurrentlyPolled
-                    ? "bg-blue-100 text-blue-800 border border-blue-300 font-bold shadow-2xs animate-pulse"
-                    : "bg-slate-100 text-slate-600 border border-slate-200/80 font-medium"
-                }`}
-              >
-                {isCurrentlyPolled && <span className="w-1 h-1 rounded-full bg-blue-600 animate-ping" />}
-                <span>@{h}</span>
-              </span>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Interactive Fetch Latest Tweet from Person Bar (for end-to-end testing) */}
-      <div className="pt-2 pb-2.5 px-0.5 border-b border-slate-100 space-y-1.5 shrink-0">
-        <form onSubmit={handlePersonSubmit} className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              placeholder="Enter @handle to test (e.g. VitalikButerin, elonmusk)"
-              value={personInput}
-              onChange={(e) => setPersonInput(e.target.value)}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={isInjecting || !personInput.trim()}
-            className="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white disabled:opacity-50 transition shadow-2xs shrink-0 flex items-center gap-1.5 cursor-pointer"
-          >
-            {isInjecting ? (
-              <>
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Fetching...</span>
-              </>
-            ) : (
-              <span>Fetch Latest</span>
-            )}
-          </button>
-        </form>
-
-        {/* Quick Presets for Instant 1-Click Verification */}
-        <div className="flex items-center gap-1.5 overflow-x-auto text-[10px] scrollbar-none">
-          <span className="text-slate-400 font-medium shrink-0">1-click test:</span>
-          {["VitalikButerin", "federalreserve", "elonmusk", "cz_binance"].map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => {
-                setPersonInput(preset);
-                if (onFetchTweetFromPerson) {
-                  onFetchTweetFromPerson(preset);
-                }
-              }}
-              className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 border border-slate-200/80 transition font-medium shrink-0 cursor-pointer"
-            >
-              @{preset}
-            </button>
-          ))}
         </div>
       </div>
 
       {/* Main Container: Tweets Scroll, Loader Pinned Always in View at Bottom */}
-      <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col pt-2">
+      <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col pt-3">
         {/* Tweets Feed: Only tweets scroll, slide & hide behind loader if more content */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-1 pb-36 scroll-smooth">
-          {tweetFeed.length === 0 ? (
+          {visibleTweets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-3 my-auto">
               <div className="w-12 h-12 rounded-2xl bg-blue-50/90 border border-blue-200/80 flex items-center justify-center text-blue-600 shadow-xs">
                 <Radio className="w-6 h-6 animate-pulse" />
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-800 tracking-tight">
-                  {cleanTrackedHandles.length > 0
-                    ? `Sentinel Armed for @${cleanTrackedHandles[0]}`
-                    : "Real-time Event Sentinel Armed"}
+                  Watching for tweets from @{cleanTrackedHandles.join(", @")}
                 </h4>
                 <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
                   {agentCreatedAt ? (
                     <>
-                      Agent deployed at{" "}
+                      Waiting for new tweets published after trade was created (
                       <span className="font-semibold text-slate-700">
                         {new Date(agentCreatedAt).toLocaleTimeString()}
                       </span>
-                      . Radar is armed and strictly filtering for new tweets published <em>after</em> deployment.
+                      ).
                     </>
                   ) : (
-                    "Radar is actively scanning for upcoming market catalysts in real-time."
+                    "Waiting for new tweets in real time."
                   )}
                 </p>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-[11px] font-semibold text-emerald-700 shadow-2xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                <span>Strict Post-Deployment Filter Active</span>
-              </div>
+              {cleanTrackedHandles.length > 0 && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-[11px] font-semibold text-blue-700 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  <span>Watching for latest tweets</span>
+                </div>
+              )}
             </div>
           ) : (
-            tweetFeed.map((tweet) => {
+            visibleTweets.map((tweet) => {
               const profile = getAuthorProfile(tweet.author);
-            const social = getDeterministicStats(tweet.id);
-            const isLiked = !!likedTweets[tweet.id];
-            const isRetweeted = !!retweetedTweets[tweet.id];
+              const social = getDeterministicStats(tweet.id);
+              const isLiked = !!likedTweets[tweet.id];
+              const isRetweeted = !!retweetedTweets[tweet.id];
 
-            return (
-              <div
-                key={tweet.id}
-                className="p-3.5 sm:p-4 rounded-2xl border border-slate-200/85 bg-white hover:border-slate-300 hover:shadow-2xs transition duration-150 space-y-2.5 group"
-              >
-                {/* Twitter Post Header */}
-                <div className="flex items-start gap-3">
-                  {/* Round Avatar */}
-                  <div className="shrink-0 relative">
-                    {profile.avatar ? (
-                      <img
-                        src={profile.avatar}
-                        alt={profile.name}
-                        className="w-10 h-10 rounded-full object-cover object-top border border-slate-200/90 shadow-2xs"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-xs uppercase shadow-2xs">
-                        {profile.name.substring(0, 2)}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Tweet Header Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1 min-w-0 flex-wrap">
-                        {/* Full Name */}
-                        <span className="font-bold text-slate-900 text-[13px] hover:underline cursor-pointer truncate">
-                          {profile.name}
-                        </span>
-
-                        {/* Verified Badge */}
-                        {profile.verified && <TwitterVerifiedBadge className="w-3.5 h-3.5 text-[#1d9bf0]" />}
-
-                        {/* @handle */}
-                        <span className="text-slate-400 text-[12px] truncate">
-                          @{profile.handle}
-                        </span>
-
-                        <span className="text-slate-300 text-[11px]">·</span>
-
-                        {/* Relative Time */}
-                        <span className="text-slate-400 text-[11px] font-medium whitespace-nowrap">
-                          {formatTwitterTime(tweet.createdAt)}
-                        </span>
-                      </div>
-
-                      {/* View Link Icon */}
-                      {tweet.url && (
-                        <a
-                          href={tweet.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-slate-400 hover:text-blue-600 transition p-0.5 rounded-md shrink-0"
-                          title="View post on X"
-                        >
-                          <ArrowUpRight className="w-3.5 h-3.5" />
-                        </a>
+              return (
+                <div
+                  key={tweet.id}
+                  className="p-3.5 sm:p-4 rounded-2xl border border-slate-200/85 bg-white hover:border-slate-300 hover:shadow-2xs transition duration-150 space-y-2.5 group"
+                >
+                  {/* Twitter Post Header */}
+                  <div className="flex items-start gap-3">
+                    {/* Round Avatar */}
+                    <div className="shrink-0 relative">
+                      {profile.avatar ? (
+                        <img
+                          src={profile.avatar}
+                          alt={profile.name}
+                          className="w-10 h-10 rounded-full object-cover object-top border border-slate-200/90 shadow-2xs"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-xs uppercase shadow-2xs">
+                          {profile.name.substring(0, 2)}
+                        </div>
                       )}
                     </div>
 
-                    {/* Tweet Body Text */}
-                    <p className="mt-1.5 text-[13px] text-slate-800 font-normal leading-relaxed break-words whitespace-pre-wrap">
-                      {formatTweetText(tweet.text)}
-                    </p>
+                    {/* Tweet Header Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1 min-w-0 flex-wrap">
+                          {/* Full Name */}
+                          <span className="font-bold text-slate-900 text-[13px] hover:underline cursor-pointer truncate">
+                            {profile.name}
+                          </span>
 
-                    {/* Twitter Interaction Actions Bar */}
-                    <div className="flex items-center justify-between pt-2.5 mt-1 text-[11px] text-slate-400 border-t border-slate-100/90 max-w-sm">
-                      {/* Replies */}
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 hover:text-[#1d9bf0] transition group cursor-pointer"
-                      >
-                        <div className="p-1 rounded-full group-hover:bg-blue-50 transition">
-                          <MessageCircle className="w-3.5 h-3.5" />
-                        </div>
-                        <span>{social.replies}</span>
-                      </button>
+                          {/* Verified Badge */}
+                          {profile.verified && <TwitterVerifiedBadge className="w-3.5 h-3.5 text-[#1d9bf0]" />}
 
-                      {/* Retweets */}
-                      <button
-                        type="button"
-                        onClick={() => toggleRetweet(tweet.id)}
-                        className={`flex items-center gap-1.5 transition group cursor-pointer ${isRetweeted ? "text-[#00ba7c] font-semibold" : "hover:text-[#00ba7c]"
-                          }`}
-                      >
-                        <div className="p-1 rounded-full group-hover:bg-emerald-50 transition">
-                          <Repeat2 className="w-3.5 h-3.5" />
-                        </div>
-                        <span>{social.retweets + (isRetweeted ? 1 : 0)}</span>
-                      </button>
+                          {/* @handle */}
+                          <span className="text-slate-400 text-[12px] truncate">
+                            @{profile.handle}
+                          </span>
 
-                      {/* Likes */}
-                      <button
-                        type="button"
-                        onClick={() => toggleLike(tweet.id)}
-                        className={`flex items-center gap-1.5 transition group cursor-pointer ${isLiked ? "text-[#f91880] font-semibold" : "hover:text-[#f91880]"
-                          }`}
-                      >
-                        <div className="p-1 rounded-full group-hover:bg-rose-50 transition">
-                          <Heart className={`w-3.5 h-3.5 ${isLiked ? "fill-current" : ""}`} />
-                        </div>
-                        <span>{social.likes + (isLiked ? 1 : 0)}</span>
-                      </button>
+                          <span className="text-slate-300 text-[11px]">·</span>
 
-                      {/* Views / Analytics */}
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <div className="p-1">
-                          <BarChart2 className="w-3.5 h-3.5" />
+                          {/* Relative Time */}
+                          <span className="text-slate-400 text-[11px] font-medium whitespace-nowrap">
+                            {formatTwitterTime(tweet.createdAt)}
+                          </span>
                         </div>
-                        <span>{social.views}</span>
+
+                        {/* View Link Icon */}
+                        {tweet.url && (
+                          <a
+                            href={tweet.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-slate-400 hover:text-blue-600 transition p-0.5 rounded-md shrink-0"
+                            title="View post on X"
+                          >
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                          </a>
+                        )}
                       </div>
 
-                      {/* Share */}
-                      {tweet.url && (
-                        <a
-                          href={tweet.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1 rounded-full hover:bg-slate-100 hover:text-slate-600 transition"
-                          title="Share on X"
+                      {/* Tweet Body Text */}
+                      <p className="mt-1.5 text-[13px] text-slate-800 font-normal leading-relaxed break-words whitespace-pre-wrap">
+                        {formatTweetText(tweet.text)}
+                      </p>
+
+                      {/* Twitter Interaction Actions Bar */}
+                      <div className="flex items-center justify-between pt-2.5 mt-1 text-[11px] text-slate-400 border-t border-slate-100/90 max-w-sm">
+                        {/* Replies */}
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 hover:text-[#1d9bf0] transition group cursor-pointer"
                         >
-                          <Share2 className="w-3.5 h-3.5" />
-                        </a>
-                      )}
+                          <div className="p-1 rounded-full group-hover:bg-blue-50 transition">
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </div>
+                          <span>{social.replies}</span>
+                        </button>
+
+                        {/* Retweets */}
+                        <button
+                          type="button"
+                          onClick={() => toggleRetweet(tweet.id)}
+                          className={`flex items-center gap-1.5 transition group cursor-pointer ${isRetweeted ? "text-[#00ba7c] font-semibold" : "hover:text-[#00ba7c]"
+                            }`}
+                        >
+                          <div className="p-1 rounded-full group-hover:bg-emerald-50 transition">
+                            <Repeat2 className="w-3.5 h-3.5" />
+                          </div>
+                          <span>{social.retweets + (isRetweeted ? 1 : 0)}</span>
+                        </button>
+
+                        {/* Likes */}
+                        <button
+                          type="button"
+                          onClick={() => toggleLike(tweet.id)}
+                          className={`flex items-center gap-1.5 transition group cursor-pointer ${isLiked ? "text-[#f91880] font-semibold" : "hover:text-[#f91880]"
+                            }`}
+                        >
+                          <div className="p-1 rounded-full group-hover:bg-rose-50 transition">
+                            <Heart className={`w-3.5 h-3.5 ${isLiked ? "fill-current" : ""}`} />
+                          </div>
+                          <span>{social.likes + (isLiked ? 1 : 0)}</span>
+                        </button>
+
+                        {/* Views / Analytics */}
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                          <div className="p-1">
+                            <BarChart2 className="w-3.5 h-3.5" />
+                          </div>
+                          <span>{social.views}</span>
+                        </div>
+
+                        {/* Share */}
+                        {tweet.url && (
+                          <a
+                            href={tweet.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1 rounded-full hover:bg-slate-100 hover:text-slate-600 transition"
+                            title="Share on X"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          }))}
+              );
+            }))}
           <div ref={feedBottomRef} className="h-2" />
         </div>
 
@@ -647,10 +687,10 @@ export function LiveMonitor({
         {/* Tweets smoothly scroll down and show/hide behind loader with natural gradient fade */}
         <div className="absolute bottom-0 left-0 right-0 pt-20 pb-3 bg-gradient-to-t from-white via-white/95 to-transparent flex flex-col items-center justify-center text-center pointer-events-none z-10">
           <div className="pointer-events-auto flex flex-col items-center justify-center text-center space-y-1.5 pt-5 pb-1">
-            {/* Centered blinking & spinning radar beacon */}
+            {/* Centered blinking & spinning beacon */}
             <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 border border-slate-200/90 text-slate-500 shrink-0 shadow-xs">
-              <RefreshCw className={`w-4 h-4 text-slate-600 ${isListening ? "animate-spin" : ""}`} />
-              {isListening && (
+              <RefreshCw className={`w-4 h-4 text-slate-600 ${isListening && cleanTrackedHandles.length > 0 ? "animate-spin" : ""}`} />
+              {isListening && cleanTrackedHandles.length > 0 && (
                 <>
                   <span className="absolute inset-0 rounded-full bg-blue-400/20 animate-ping pointer-events-none" />
                   <span className="absolute -inset-1 rounded-full border border-blue-300/40 animate-pulse pointer-events-none" />
@@ -658,7 +698,7 @@ export function LiveMonitor({
               )}
             </div>
 
-            {/* Title with live queue progress */}
+            {/* Title with live checking status */}
             <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-800">
               {currentCheckingHandle ? (
                 <>
@@ -674,16 +714,22 @@ export function LiveMonitor({
                     <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" style={{ animationDelay: "400ms" }} />
                   </span>
                 </>
-              ) : isListening ? (
-                <span>Next queue cycle in {pollSecondsRemaining}s</span>
+              ) : !isListening ? (
+                <span className="text-slate-500">Updates paused</span>
+              ) : cleanTrackedHandles.length === 0 ? (
+                <span className="text-slate-700 font-semibold">
+                  Place your first trade to start fetching...
+                </span>
               ) : (
-                <span className="text-slate-500">Radar queue paused</span>
+                <span>Checking again in {pollSecondsRemaining}s</span>
               )}
             </div>
 
-            {/* Anti-rate-limit 1s delay queue pacing guarantee */}
+            {/* Helper status text */}
             <p className="text-[10px] text-slate-400 font-medium">
-              Queue pacing active • 1,000ms delay per agent handle
+              {cleanTrackedHandles.length > 0
+                ? "Checking for latest tweets automatically"
+                : "Real tweets will stream here once a trade is active"}
             </p>
           </div>
         </div>

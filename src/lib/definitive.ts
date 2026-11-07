@@ -15,10 +15,10 @@ const TOKEN_ADDRESSES: Record<string, string> = {
 };
 
 const REFERENCE_PRICES: Record<string, number> = {
-  WETH: 2840.50,
-  WBTC: 88250.00,
-  SOL: 192.40,
-  ARB: 1.15,
+  WETH: 2248.50,
+  WBTC: 76080.00,
+  SOL: 90.00,
+  ARB: 0.16,
 };
 
 export async function executeDefinitiveFlashOrder({
@@ -35,7 +35,7 @@ export async function executeDefinitiveFlashOrder({
   agentPrivateKey?: string;
 }): Promise<FlashOrderResult> {
   const token = apiKey || DEFAULT_FLASH_KEY;
-  const currentTokenPrice = REFERENCE_PRICES[intent.targetAsset] || 2840.50;
+  const currentTokenPrice = REFERENCE_PRICES[intent.targetAsset] || 2248.50;
 
   const takeProfitPct = intent.takeProfitPct || 5.0;
   const stopLossPct = intent.stopLossPct || 2.5;

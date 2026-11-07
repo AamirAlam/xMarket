@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
       if (body.positionId) {
         const position = getPositionById(body.positionId);
         if (position) {
-          const currentPrice = position.currentPrice || position.entryPrice || 2840.5;
+          const currentPrice = position.currentPrice || position.entryPrice || 2248.5;
           updatedPos = {
             ...position,
             status: "OPEN",
@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
       const targetAssetAddress = TOKEN_ADDRESSES[targetAsset] || TOKEN_ADDRESSES.WETH;
       const contraAssetAddress = TOKEN_ADDRESSES[contraAsset] || TOKEN_ADDRESSES.USDC;
 
-      const currentPrice = position.currentPrice || position.entryPrice || 2840.5;
+      const currentPrice = position.currentPrice || position.entryPrice || 2248.5;
       const tpPct = position.takeProfitPct || 5;
       const slPct = position.stopLossPct || 2.5;
       const tpPrice = Math.round(currentPrice * (1 + tpPct / 100) * 100) / 100;

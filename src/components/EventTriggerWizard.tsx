@@ -35,7 +35,7 @@ interface EventTriggerWizardProps {
   onCancel?: () => void;
 }
 
-const PRESET_EVENTS = [
+const INFLUENCER_PRESETS = [
   {
     id: "powell",
     persona: "Jerome Powell",
@@ -87,22 +87,125 @@ const PRESET_EVENTS = [
     description: "MicroStrategy corporate treasury bitcoin balance expansions",
   },
   {
-    id: "custom",
-    persona: "Custom Voice",
-    handle: "custom",
-    name: "Freeform Sentiment Sentinel",
-    avatar: "",
+    id: "cz",
+    persona: "CZ Binance",
+    handle: "cz_binance",
+    name: "Binance & Regulatory Updates",
+    avatar: "/avatars/cz.jpg",
+    defaultDirection: "BULLISH_ONLY" as SentimentDirection,
+    targetAsset: "WETH",
+    description: "Global crypto adoption, BNB ecosystem growth & regulatory developments",
+  },
+  {
+    id: "watcherguru",
+    persona: "Watcher Guru",
+    handle: "WatcherGuru",
+    name: "Breaking Market & Macro Alerts",
+    avatar: "/avatars/watcherguru.png",
+    defaultDirection: "ANY" as SentimentDirection,
+    targetAsset: "WBTC",
+    description: "Real-time breaking crypto headlines, regulatory filings & macro news",
+  },
+  {
+    id: "brian",
+    persona: "Brian Armstrong",
+    handle: "brian_armstrong",
+    name: "Coinbase Policy & US Regulations",
+    avatar: "/avatars/brian.jpg",
+    defaultDirection: "BULLISH_ONLY" as SentimentDirection,
+    targetAsset: "WETH",
+    description: "US crypto regulatory advocacy, SEC lawsuits & institutional adoption",
+  },
+  {
+    id: "hayes",
+    persona: "Arthur Hayes",
+    handle: "CryptoHayes",
+    name: "Macro Liquidity & Yield Thesis",
+    avatar: "/avatars/hayes.jpg",
+    defaultDirection: "BULLISH_ONLY" as SentimentDirection,
+    targetAsset: "WBTC",
+    description: "Central bank fiat debasement, macro liquidity cycles & token alpha",
+  },
+  {
+    id: "whale_alert",
+    persona: "Whale Alert",
+    handle: "whale_alert",
+    name: "Mega On-Chain Whale Transfers",
+    avatar: "/avatars/whale_alert.png",
+    defaultDirection: "ANY" as SentimentDirection,
+    targetAsset: "WBTC",
+    description: "Large institutional bitcoin transfers, exchange inflows & reserve movements",
+  },
+  {
+    id: "balchunas",
+    persona: "Eric Balchunas",
+    handle: "EricBalchunas",
+    name: "Spot ETF Flow Surges & Approvals",
+    avatar: "/avatars/balchunas.jpg",
+    defaultDirection: "BULLISH_ONLY" as SentimentDirection,
+    targetAsset: "WBTC",
+    description: "Bloomberg ETF analyst breaking spot Bitcoin & Ethereum ETF flows",
+  },
+  {
+    id: "cathie",
+    persona: "Cathie Wood",
+    handle: "CathieDWood",
+    name: "ARK Invest Bitcoin Strategy",
+    avatar: "/avatars/cathie.jpg",
+    defaultDirection: "BULLISH_ONLY" as SentimentDirection,
+    targetAsset: "WBTC",
+    description: "Disruptive technology innovation & institutional Bitcoin price models",
+  },
+  {
+    id: "murad",
+    persona: "Murad Mahmudov",
+    handle: "MustStopMurad",
+    name: "Memecoin Supercycle Catalyst",
+    avatar: "/avatars/murad.jpg",
+    defaultDirection: "BULLISH_ONLY" as SentimentDirection,
+    targetAsset: "SOL",
+    description: "Token community conviction, viral culture shifts & Solana momentum",
+  },
+  {
+    id: "cobie",
+    persona: "Cobie",
+    handle: "cobie",
+    name: "Crypto Alpha & Cycle Commentary",
+    avatar: "/avatars/cobie.jpg",
     defaultDirection: "ANY" as SentimentDirection,
     targetAsset: "WETH",
-    description: "Monitor any public account handle with automated 0G TEE analysis",
+    description: "High-signal market commentary, ecosystem analysis & trading psychology",
+  },
+  {
+    id: "zachxbt",
+    persona: "ZachXBT",
+    handle: "zachxbt",
+    name: "On-Chain Exploit & Investigation",
+    avatar: "/avatars/zachxbt.jpg",
+    defaultDirection: "BEARISH_ONLY" as SentimentDirection,
+    targetAsset: "WETH",
+    description: "Forensic on-chain investigations, exploit disclosures & security alerts",
   },
 ];
+
+const CUSTOM_PRESET = {
+  id: "custom",
+  persona: "Custom Voice",
+  handle: "custom",
+  name: "Custom Tweet Trigger",
+  avatar: "",
+  defaultDirection: "ANY" as SentimentDirection,
+  targetAsset: "WETH",
+  description: "Monitor any public account handle with automated 0G TEE analysis",
+};
+
+const PRESET_EVENTS = [...INFLUENCER_PRESETS, CUSTOM_PRESET];
 
 const TOKEN_OPTIONS = [
   {
     symbol: "WETH",
     name: "Wrapped Ethereum",
-    price: 2840.50,
+    price: 2248.50,
     tag: "Arbitrum Core",
     icon: "Ξ",
     color: "from-blue-500 to-indigo-600",
@@ -110,7 +213,7 @@ const TOKEN_OPTIONS = [
   {
     symbol: "WBTC",
     name: "Wrapped Bitcoin",
-    price: 88250.00,
+    price: 76080.00,
     tag: "Macro Reserve",
     icon: "₿",
     color: "from-amber-500 to-orange-600",
@@ -118,7 +221,7 @@ const TOKEN_OPTIONS = [
   {
     symbol: "SOL",
     name: "Solana (via Flash)",
-    price: 192.40,
+    price: 90.00,
     tag: "High Beta",
     icon: "◎",
     color: "from-purple-500 to-indigo-500",
@@ -126,7 +229,7 @@ const TOKEN_OPTIONS = [
   {
     symbol: "ARB",
     name: "Arbitrum One",
-    price: 1.15,
+    price: 0.16,
     tag: "L2 Ecosystem",
     icon: "◆",
     color: "from-sky-500 to-blue-600",
@@ -134,10 +237,10 @@ const TOKEN_OPTIONS = [
 ];
 
 const TOKEN_PRICES: Record<string, number> = {
-  WETH: 2840.50,
-  WBTC: 88250.00,
-  SOL: 192.40,
-  ARB: 1.15,
+  WETH: 2248.50,
+  WBTC: 76080.00,
+  SOL: 90.00,
+  ARB: 0.16,
 };
 
 export function EventTriggerWizard({
@@ -203,7 +306,66 @@ export function EventTriggerWizard({
   const activePreset =
     PRESET_EVENTS.find((p) => p.id === selectedPresetId) || PRESET_EVENTS[0];
 
-  const currentRefPrice = TOKEN_PRICES[intent.targetAsset] || 2840.50;
+  // Dynamic token prices with live market fetching and accurate default fallbacks
+  const [tokenPrices, setTokenPrices] = useState<Record<string, number>>(TOKEN_PRICES);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLivePrices = async () => {
+      try {
+        const res = await fetch(
+          "https://api.binance.com/api/v3/ticker/price?symbols=%5B%22ETHUSDT%22,%22BTCUSDT%22,%22SOLUSDT%22,%22ARBUSDT%22%5D"
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && isMounted) {
+            const updated = { ...TOKEN_PRICES };
+            for (const item of data) {
+              const val = parseFloat(item.price);
+              if (!isNaN(val) && val > 0) {
+                if (item.symbol === "ETHUSDT") updated.WETH = Math.round(val * 100) / 100;
+                if (item.symbol === "BTCUSDT") updated.WBTC = Math.round(val * 100) / 100;
+                if (item.symbol === "SOLUSDT") updated.SOL = Math.round(val * 100) / 100;
+                if (item.symbol === "ARBUSDT") updated.ARB = Math.round(val * 10000) / 10000;
+              }
+            }
+            setTokenPrices(updated);
+            return;
+          }
+        }
+      } catch {
+        // Fallback silently
+      }
+
+      try {
+        const cgRes = await fetch(
+          "https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,solana,arbitrum&vs_currencies=usd"
+        );
+        if (cgRes.ok) {
+          const cg = await cgRes.json();
+          if (isMounted) {
+            const updated = { ...TOKEN_PRICES };
+            if (cg.ethereum?.usd) updated.WETH = cg.ethereum.usd;
+            if (cg.bitcoin?.usd) updated.WBTC = cg.bitcoin.usd;
+            if (cg.solana?.usd) updated.SOL = cg.solana.usd;
+            if (cg.arbitrum?.usd) updated.ARB = cg.arbitrum.usd;
+            setTokenPrices(updated);
+          }
+        }
+      } catch {
+        // Fallback silently
+      }
+    };
+
+    fetchLivePrices();
+    const interval = setInterval(fetchLivePrices, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const currentRefPrice = tokenPrices[intent.targetAsset] || TOKEN_PRICES[intent.targetAsset] || 2248.50;
   const estimatedTpPrice = Math.round(currentRefPrice * (1 + intent.takeProfitPct / 100) * 100) / 100;
   const estimatedSlPrice = Math.round(currentRefPrice * (1 - intent.stopLossPct / 100) * 100) / 100;
   const potentialProfitUsd = Math.round(((intent.tradeSizeUsdc * intent.takeProfitPct) / 100) * 100) / 100;
@@ -362,12 +524,26 @@ export function EventTriggerWizard({
     <div className="rounded-[32px] border border-slate-200/90 bg-white p-5 sm:p-7 shadow-sm flex flex-col justify-between space-y-6">
       {/* Center-Aligned Step Heading */}
       <div className="relative pb-4 border-b border-slate-100 text-center">
-        {onCancel && (
+        {(currentStep > 1 || onCancel) && (
           <button
             type="button"
-            onClick={onCancel}
+            onClick={() => {
+              if (currentStep === 3) {
+                setCurrentStep(2);
+              } else if (currentStep === 2) {
+                setCurrentStep(1);
+              } else if (onCancel) {
+                onCancel();
+              }
+            }}
             className="absolute left-0 top-0.5 w-8 h-8 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 flex items-center justify-center transition cursor-pointer"
-            title="Back to Positions"
+            title={
+              currentStep === 3
+                ? "Back to Step 2"
+                : currentStep === 2
+                ? "Back to Step 1"
+                : "Back to Positions"
+            }
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -382,11 +558,7 @@ export function EventTriggerWizard({
           {currentStep === 2 && "Token Selection & Configuration"}
           {currentStep === 3 && "Preview & Submit"}
         </h3>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {currentStep === 1 && "Select the market catalyst event or public account that will trigger your sentinel trade."}
-          {currentStep === 2 && "Select which token to trade, position size, trigger sentiment, and bracket boundaries."}
-          {currentStep === 3 && "Review all parameters of your event-driven trade before arming the sentinel."}
-        </p>
+
       </div>
 
       {/* ========================================================================= */}
@@ -394,54 +566,101 @@ export function EventTriggerWizard({
       {/* ========================================================================= */}
       {currentStep === 1 && (
         <div className="space-y-5 animate-in fade-in duration-200">
-          {/* Preset Catalyst Event Triggers Grid */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-              <span>Track Influencer</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {PRESET_EVENTS.map((preset) => {
-                const isSelected = selectedPresetId === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handlePresetSelect(preset)}
-                    className={`p-3 rounded-2xl text-left border text-xs transition relative flex items-start gap-3 group cursor-pointer ${isSelected
-                      ? "border-blue-500 bg-blue-50/90 text-blue-950 font-medium shadow-xs ring-1 ring-blue-500/30"
-                      : "border-slate-200/90 bg-slate-50/50 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                      }`}
-                  >
-                    {preset.avatar ? (
-                      <img
-                        src={preset.avatar}
-                        alt={preset.persona}
-                        className="w-10 h-10 rounded-xl object-cover object-top border border-slate-200 shrink-0 shadow-2xs"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center border border-blue-200 shrink-0 font-bold text-sm">
-                        ⚡
+          {/* Preset Catalyst Event Triggers Section */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                <span>Track Influencer</span>
+                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
+                  {INFLUENCER_PRESETS.length} Profiles
+                </span>
+              </label>
+              <span className="text-[10px] text-slate-400 font-medium">Scroll to explore</span>
+            </div>
+
+            {/* Scrollable Influencers Grid */}
+            <div className="max-h-[300px] overflow-y-auto pr-1.5 custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {INFLUENCER_PRESETS.map((preset) => {
+                  const isSelected = selectedPresetId === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handlePresetSelect(preset)}
+                      className={`p-3 rounded-2xl text-left border text-xs transition relative flex items-start gap-3 group cursor-pointer ${isSelected
+                        ? "border-blue-500 bg-blue-50/90 text-blue-950 font-medium shadow-xs ring-1 ring-blue-500/30"
+                        : "border-slate-200/90 bg-slate-50/50 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                    >
+                      {preset.avatar ? (
+                        <img
+                          src={preset.avatar}
+                          alt={preset.persona}
+                          className="w-10 h-10 rounded-xl object-cover object-top border border-slate-200 shrink-0 shadow-2xs"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center border border-blue-200 shrink-0 font-bold text-sm">
+                          ⚡
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-slate-900 text-xs truncate">
+                            {preset.persona}
+                          </span>
+                          {isSelected && (
+                            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                          )}
+                        </div>
+                        <div className="text-[11px] text-blue-600 font-mono truncate font-medium">
+                          @{preset.handle}
+                        </div>
+                        <div className="text-[11px] text-slate-600 truncate mt-0.5 font-medium">
+                          {preset.name}
+                        </div>
                       </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="font-bold text-slate-900 text-xs truncate">
-                          {preset.persona}
-                        </span>
-                        {isSelected && (
-                          <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-                        )}
-                      </div>
-                      <div className="text-[11px] text-blue-600 font-mono truncate font-medium">
-                        @{preset.handle}
-                      </div>
-                      <div className="text-[11px] text-slate-600 truncate mt-0.5 font-medium">
-                        {preset.name}
-                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Fixed Custom Voice Trigger */}
+            <div className="pt-0.5">
+              <button
+                type="button"
+                onClick={() => handlePresetSelect(CUSTOM_PRESET)}
+                className={`w-full p-3 rounded-2xl text-left border text-xs transition relative flex items-start sm:items-center gap-3 group cursor-pointer ${selectedPresetId === "custom"
+                  ? "border-blue-500 bg-blue-50/90 text-blue-950 font-medium shadow-xs ring-1 ring-blue-500/30"
+                  : "border-slate-200/90 bg-slate-50/50 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                  }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center border border-blue-200 shrink-0 font-bold text-base shadow-2xs">
+                  ⚡
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 text-xs">
+                        {CUSTOM_PRESET.persona}
+                      </span>
+                      <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                        Custom Handle
+                      </span>
                     </div>
-                  </button>
-                );
-              })}
+                    {selectedPresetId === "custom" && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                    )}
+                  </div>
+                  <div className="text-[11px] text-blue-600 font-mono truncate font-medium mt-0.5">
+                    @{CUSTOM_PRESET.handle}
+                  </div>
+                  <div className="text-[11px] text-slate-600 truncate mt-0.5 font-medium">
+                    {CUSTOM_PRESET.name} (specify any public X handle &amp; catalyst below)
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -511,6 +730,7 @@ export function EventTriggerWizard({
                 <div className="grid grid-cols-2 gap-2">
                   {TOKEN_OPTIONS.map((token) => {
                     const isSelected = intent.targetAsset === token.symbol;
+                    const livePrice = tokenPrices[token.symbol] ?? token.price;
                     return (
                       <button
                         key={token.symbol}
@@ -530,7 +750,9 @@ export function EventTriggerWizard({
                           )}
                         </div>
                         <div className="font-extrabold text-xs text-slate-900 mt-2">{token.symbol}</div>
-                        <div className="text-[11px] text-slate-600 font-mono font-medium">${token.price.toLocaleString()}</div>
+                        <div className="text-[11px] text-slate-600 font-mono font-medium">
+                          ${livePrice >= 1 ? livePrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : livePrice.toFixed(4)}
+                        </div>
                         <div className="text-[9px] text-slate-400 mt-0.5 font-medium">{token.tag}</div>
                       </button>
                     );
@@ -826,28 +1048,25 @@ export function EventTriggerWizard({
               </div>
             </div>
 
-            {/* Zero Manual Funding / Direct Main Wallet Deduction Banner */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-blue-500/10 to-indigo-500/10 border border-emerald-500/30 space-y-3">
+            {/* Direct Main Wallet Delegation Banner */}
+            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xs shadow-xs">
-                    <Coins className="w-4 h-4" />
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-black text-slate-900 leading-tight flex items-center gap-1.5">
-                      <span>Zero Pre-Funding Required</span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wide">
-                        Direct Main Wallet Deduction
-                      </span>
+                    <div className="text-xs font-bold text-slate-900 leading-tight">
+                      Direct Main Wallet Delegation
                     </div>
-                    <div className="text-[10px] text-slate-500 font-medium">
-                      No manual deposits needed • Capital deducted on-demand when trade fires
+                    <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                      Zero pre-funding required • Capital deducted on-demand when trade fires
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-white" />
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 shadow-2xs">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                     <span>$0 Deposit Needed</span>
                   </span>
                 </div>
@@ -855,36 +1074,36 @@ export function EventTriggerWizard({
 
               {/* Deduction & Routing Specifications */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-white/95 border border-emerald-100 shadow-2xs">
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                   <span className="text-[9px] uppercase font-bold text-slate-400 block">Manual Pre-Funding</span>
-                  <div className="font-mono font-black text-emerald-700 text-sm mt-0.5">$0.00</div>
+                  <div className="font-mono font-bold text-slate-900 text-sm mt-0.5">$0.00</div>
                   <span className="text-[9px] text-slate-500">Zero transfers</span>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-white/95 border border-emerald-100 shadow-2xs">
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                   <span className="text-[9px] uppercase font-bold text-slate-400 block">Capital Custody</span>
                   <div className="font-mono font-bold text-slate-900 text-xs mt-0.5 truncate">
                     {connectedWallet ? `${connectedWallet.slice(0, 6)}...${connectedWallet.slice(-4)}` : "Connected EOA"}
                   </div>
-                  <span className="text-[9px] text-emerald-600 font-semibold">100% in Main Wallet</span>
+                  <span className="text-[9px] text-blue-600 font-semibold">100% in Main Wallet</span>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-white/95 border border-emerald-100 shadow-2xs">
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                   <span className="text-[9px] uppercase font-bold text-slate-400 block">Deduction Method</span>
-                  <div className="font-bold text-blue-700 text-xs mt-0.5">Flash JIT Pull</div>
+                  <div className="font-bold text-slate-900 text-xs mt-0.5">Flash JIT Pull</div>
                   <span className="text-[9px] text-slate-500">Only on Catalyst</span>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-white/95 border border-emerald-100 shadow-2xs">
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                   <span className="text-[9px] uppercase font-bold text-slate-400 block">Exit Proceeds</span>
-                  <div className="font-bold text-emerald-700 text-xs mt-0.5">Direct to Main</div>
+                  <div className="font-bold text-slate-900 text-xs mt-0.5">Direct to Main</div>
                   <span className="text-[9px] text-slate-500">No withdrawal step</span>
                 </div>
               </div>
 
               {/* Dedicated Agent Identity & Session Key Details */}
-              <div className="space-y-2 pt-1 border-t border-slate-200/60">
-                <div className="p-3 rounded-xl bg-white/95 border border-blue-100 flex items-center justify-between shadow-2xs">
+              <div className="space-y-2 pt-1 border-t border-slate-200/70">
+                <div className="p-3 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between shadow-2xs">
                   <div>
                     <div className="text-[9px] uppercase font-bold text-slate-400 flex items-center gap-1">
                       <Wallet className="w-3 h-3 text-blue-600" />
@@ -919,14 +1138,14 @@ export function EventTriggerWizard({
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-white/80 border border-blue-50 flex items-center justify-between text-[11px]">
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between text-[11px] shadow-2xs">
                   <div>
                     <span className="text-[9px] uppercase font-bold text-slate-400 block">Scoped Session Authorization</span>
                     <span className="font-mono text-slate-700 text-xs font-semibold">
                       Allowed Spender: Definitive Flash Router (0x5d00...8f78) • Max ${intent.tradeSizeUsdc} USDC
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 font-bold">
+                  <span className="text-[10px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 font-bold">
                     Router Locked
                   </span>
                 </div>
@@ -973,29 +1192,11 @@ export function EventTriggerWizard({
                     </div>
                   </div>
 
-                  {/* Step 1 Test/Force Re-Approve Option */}
-                  {allowanceInfo?.isPreApproved && (
-                    <div className="flex items-center justify-between px-2 pt-0.5 text-[11px]">
-                      <label className="flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 select-none">
-                        <input
-                          type="checkbox"
-                          checked={forceReapprove}
-                          onChange={(e) => setForceReapprove(e.target.checked)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
-                        />
-                        <span className="font-medium text-[11px]">
-                          Force on-chain approval transaction (prompts Popup #1)
-                        </span>
-                      </label>
-                      <span className="text-[10px] text-slate-400 font-mono">Optional</span>
-                    </div>
-                  )}
-
                   {/* Step 2: Session Delegation Permit */}
                   <div className="p-2.5 rounded-xl border bg-slate-50/70 border-slate-200/80 flex items-start justify-between gap-3">
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-1.5 font-bold text-slate-900 text-[11px]">
-                        <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center font-black">
+                        <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-black">
                           2
                         </span>
                         <span>EIP-712 Session Key Delegation Permit</span>
@@ -1006,7 +1207,7 @@ export function EventTriggerWizard({
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
                         <span>{allowanceInfo?.isPreApproved && !forceReapprove ? "1 MetaMask Popup" : "Popup 2 of 2"}</span>
                       </span>
                     </div>
@@ -1016,7 +1217,7 @@ export function EventTriggerWizard({
                 <div className="text-[10px] text-slate-500 leading-normal pl-0.5">
                   {allowanceInfo?.isPreApproved && !forceReapprove ? (
                     <span>
-                      💡 <strong>Notice:</strong> Your connected wallet already has an onchain USDC allowance granted to Definitive Flash. MetaMask will prompt <strong>only 1 signature popup</strong> (the EIP-712 Session Permit). Check the box above if you want to test the approval transaction explicitly.
+                      💡 <strong>Notice:</strong> Your connected wallet already has an onchain USDC allowance granted to Definitive Flash. MetaMask will prompt <strong>only 1 signature popup</strong> (the EIP-712 Session Permit).
                     </span>
                   ) : (
                     <span>
@@ -1026,8 +1227,8 @@ export function EventTriggerWizard({
                 </div>
               </div>
 
-              <div className="text-[10px] text-slate-600 font-medium leading-relaxed bg-white/70 p-2.5 rounded-xl border border-emerald-100/80 flex items-start gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="text-[10px] text-slate-600 font-medium leading-relaxed bg-blue-50/40 p-2.5 rounded-xl border border-blue-100 flex items-start gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                 <span>
                   <strong>Non-Custodial Guarantee:</strong> Your USDC stays inside your connected MetaMask wallet. You do not need to send gas or deposit capital. The agent holds an EIP-712 spend permit capped at exactly ${intent.tradeSizeUsdc} USDC that triggers exclusively when the social catalyst conditions are verified onchain.
                 </span>
@@ -1077,7 +1278,7 @@ export function EventTriggerWizard({
                 type="button"
                 onClick={handleConfirmSubmit}
                 disabled={isSubmitting || isSigningDelegation}
-                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-blue-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer disabled:opacity-60"
+                className="w-full py-3.5 px-6 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSigningDelegation ? (
                   <>
@@ -1087,7 +1288,7 @@ export function EventTriggerWizard({
                 ) : isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Arming Delegated Event Sentinel...</span>
+                    <span>Activating Trade Trigger...</span>
                   </>
                 ) : (
                   <>
