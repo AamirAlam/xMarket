@@ -136,6 +136,85 @@ export function createAgentSessionDelegationTypedData(params: {
 }
 
 /**
+ * Checks the onchain USDC allowance granted by the wallet to the Definitive Flash Spender contract.
+ */
+export async function checkUsdcAllowance(
+  walletAddress: string,
+  requiredAmountUsdc: number = 1
+): Promise<{
+  allowance: bigint;
+  formatted: string;
+  isPreApproved: boolean;
+}> {
+  if (!walletAddress) {
+    return { allowance: BigInt(0), formatted: "$0.00", isPreApproved: false };
+  }
+
+  const usdcAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+  const spenderAddress = "0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78";
+
+  // Attempt A: Direct injected browser query
+  if (typeof window !== "undefined") {
+    const eth = (window as unknown as { ethereum?: { request: (args: any) => Promise<any> } }).ethereum;
+    if (eth && typeof eth.request === "function") {
+      try {
+        const allowanceCalldata =
+          "0xdd62ed3e" +
+          walletAddress.replace("0x", "").padStart(64, "0").toLowerCase() +
+          spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase();
+
+        const hex = await eth.request({
+          method: "eth_call",
+          params: [{ to: usdcAddress, data: allowanceCalldata }, "latest"],
+        });
+        const allowance = BigInt(hex || "0x0");
+        const required = BigInt(Math.ceil(requiredAmountUsdc * 1e6));
+        return {
+          allowance,
+          formatted: allowance > BigInt(1e12) ? "Unlimited ($1M+ max)" : `$${(Number(allowance) / 1e6).toFixed(2)}`,
+          isPreApproved: allowance >= required,
+        };
+      } catch {
+        // Fallback to public RPC
+      }
+    }
+  }
+
+  // Attempt B: Public Arbitrum One RPC
+  try {
+    const res = await fetch("https://arb1.arbitrum.io/rpc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_call",
+        params: [
+          {
+            to: usdcAddress,
+            data:
+              "0xdd62ed3e" +
+              walletAddress.replace("0x", "").padStart(64, "0").toLowerCase() +
+              spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase(),
+          },
+          "latest",
+        ],
+      }),
+    });
+    const data = await res.json();
+    const allowance = BigInt(data?.result || "0x0");
+    const required = BigInt(Math.ceil(requiredAmountUsdc * 1e6));
+    return {
+      allowance,
+      formatted: allowance > BigInt(1e12) ? "Unlimited ($1M+ max)" : `$${(Number(allowance) / 1e6).toFixed(2)}`,
+      isPreApproved: allowance >= required,
+    };
+  } catch {
+    return { allowance: BigInt(0), formatted: "$0.00", isPreApproved: false };
+  }
+}
+
+/**
  * Prompts the Master Connected Wallet (MetaMask / Rabby) to sign the session policy.
  */
 export async function requestMasterWalletDelegation(params: {
@@ -146,7 +225,9 @@ export async function requestMasterWalletDelegation(params: {
   targetHandle: string;
   allocatedBudgetUsdc: number;
   sessionExpiry: number;
-}): Promise<{ signature: string; activeMaster: string }> {
+  forceReapprove?: boolean;
+  onStepProgress?: (step: string) => void;
+}): Promise<{ signature: string; activeMaster: string; allowanceTxHash?: string; allowancePreApproved: boolean }> {
   if (typeof window === "undefined") {
     throw new Error("Wallet signature can only be requested in the browser.");
   }
@@ -162,6 +243,8 @@ export async function requestMasterWalletDelegation(params: {
       "Web3 wallet (MetaMask / Rabby) was not detected. Please install a Web3 wallet extension to sign and arm trade events."
     );
   }
+
+  params.onStepProgress?.("Connecting MetaMask wallet...");
 
   // 1. Ensure wallet is connected and retrieve active signer
   let accounts: string[] = [];
@@ -188,16 +271,120 @@ export async function requestMasterWalletDelegation(params: {
 
   const activeSigner = accounts[0];
 
-  // 2. Query active network chain ID
+  // 2. Query and enforce active network is Arbitrum One (Chain ID 42161 / 0xa4b1)
+  params.onStepProgress?.("Checking network (Arbitrum One)...");
   let activeChainId = 42161;
   try {
     const hexChain = await eth.request({ method: "eth_chainId" });
     if (hexChain && typeof hexChain === "string") {
       activeChainId = parseInt(hexChain, 16) || 42161;
     }
+    if (activeChainId !== 42161) {
+      try {
+        await eth.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0xa4b1" }],
+        });
+        activeChainId = 42161;
+      } catch (switchErr: any) {
+        if (switchErr.code === 4902) {
+          await eth.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: "0xa4b1",
+                chainName: "Arbitrum One",
+                nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+                rpcUrls: ["https://arb1.arbitrum.io/rpc"],
+                blockExplorerUrls: ["https://arbiscan.io"],
+              },
+            ],
+          });
+          activeChainId = 42161;
+        }
+      }
+    }
   } catch {
     activeChainId = 42161;
   }
+
+  // 3. Pre-authorize USDC allowance on Definitive Flash Spender contract (0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78)
+  // This allows trades to execute onchain via Definitive Flash without secondary transfer approvals.
+  let allowanceTxHash: string | undefined;
+  let allowancePreApproved = false;
+  const usdcAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+  const spenderAddress = "0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78";
+
+  try {
+    params.onStepProgress?.("Verifying USDC allowance on Arbitrum One...");
+    const allowanceCalldata =
+      "0xdd62ed3e" +
+      activeSigner.replace("0x", "").padStart(64, "0").toLowerCase() +
+      spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase();
+
+    const currentAllowanceHex = await eth.request({
+      method: "eth_call",
+      params: [{ to: usdcAddress, data: allowanceCalldata }, "latest"],
+    });
+
+    const currentAllowance = BigInt(currentAllowanceHex || "0x0");
+    const requiredAmount = BigInt(Math.ceil((params.allocatedBudgetUsdc || 1) * 1e6));
+
+    if (params.forceReapprove || currentAllowance < requiredAmount) {
+      params.onStepProgress?.(
+        "1/2: Please approve USDC for Definitive Flash router in MetaMask (Popup 1 of 2)..."
+      );
+      const approveCalldata =
+        "0x095ea7b3" +
+        spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase() +
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+      const tx = await eth.request({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            from: activeSigner,
+            to: usdcAddress,
+            data: approveCalldata,
+          },
+        ],
+      });
+      if (tx && typeof tx === "string") {
+        allowanceTxHash = tx;
+        params.onStepProgress?.("1/2: Waiting for USDC approval to confirm on Arbitrum One...");
+        for (let i = 0; i < 30; i++) {
+          await new Promise((r) => setTimeout(r, 1000));
+          try {
+            const receipt = await eth.request({
+              method: "eth_getTransactionReceipt",
+              params: [tx],
+            });
+            if (receipt && receipt.blockNumber) {
+              break;
+            }
+          } catch { }
+        }
+      }
+    } else {
+      allowancePreApproved = true;
+      params.onStepProgress?.(
+        "Step 1/2: USDC allowance pre-approved on Arbitrum One ($1M+ max). Prompting Step 2..."
+      );
+      await new Promise((r) => setTimeout(r, 650));
+    }
+  } catch (allowanceErr: any) {
+    if (
+      allowanceErr?.code === 4001 ||
+      allowanceErr?.message?.toLowerCase().includes("rejected") ||
+      allowanceErr?.message?.toLowerCase().includes("denied")
+    ) {
+      throw new Error("USDC allowance approval was rejected in MetaMask. Trade agent was not created.");
+    }
+    console.warn("USDC allowance pre-approval notice:", allowanceErr?.message);
+  }
+
+  // 4. Request cryptographic session key delegation from the master connected wallet
+  params.onStepProgress?.("2/2: Authorizing non-custodial agent session permit in MetaMask (Popup 2 of 2)...");
 
   const typedData = createAgentSessionDelegationTypedData({
     ...params,
@@ -292,6 +479,8 @@ export async function requestMasterWalletDelegation(params: {
   return {
     signature,
     activeMaster: activeSigner,
+    allowanceTxHash,
+    allowancePreApproved,
   };
 }
 

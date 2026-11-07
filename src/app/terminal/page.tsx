@@ -8,6 +8,7 @@ import { PositionsList } from "@/components/PositionsList";
 import { LiveMonitor } from "@/components/LiveMonitor";
 import { AgentVault } from "@/components/AgentVault";
 import { TradesHistoryTable } from "@/components/TradesHistoryTable";
+import { ArkivStoragePanel } from "@/components/ArkivStoragePanel";
 import {
   TradingIntent,
   DetectedTweet,
@@ -1012,6 +1013,11 @@ function TerminalContent() {
               setIsCreatingTrade(true);
             }}
           />
+        )}
+
+        {/* TAB 4: ARKIV DB-CHAIN DECENTRALIZED STORAGE */}
+        {activeTab === "arkiv" && (
+          <ArkivStoragePanel />
         )}
       </main>
 

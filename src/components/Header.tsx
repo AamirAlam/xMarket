@@ -4,10 +4,10 @@ import React from "react";
 import Link from "next/link";
 import { PumpItLogo } from "./PumpItLogo";
 import { WalletButton } from "./WalletButton";
-import { TrendingUp, PieChart, History } from "lucide-react";
+import { TrendingUp, PieChart, History, Database } from "lucide-react";
 import { WalletBalances } from "@/types";
 
-export type TerminalTab = "positions" | "portfolio" | "history";
+export type TerminalTab = "positions" | "portfolio" | "history" | "arkiv";
 
 interface HeaderProps {
   onAddressChange?: (address: string) => void;
@@ -74,6 +74,19 @@ export function Header({
           >
             <History className="w-3.5 h-3.5" />
             <span>History</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onTabChange?.("arkiv")}
+            className={`px-3.5 sm:px-4 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+              activeTab === "arkiv"
+                ? "bg-white text-amber-600 shadow-xs ring-1 ring-slate-200/60 font-semibold"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+            }`}
+          >
+            <Database className="w-3.5 h-3.5 text-amber-500" />
+            <span>Arkiv Storage</span>
           </button>
         </nav>
 

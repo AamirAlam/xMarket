@@ -96,12 +96,12 @@ function initSchema(db: Database.Database) {
   `);
 
   // Safe runtime migrations for existing tables
-  try { db.exec("ALTER TABLE positions ADD COLUMN arkivEntityKey TEXT;"); } catch {}
-  try { db.exec("ALTER TABLE positions ADD COLUMN arkivTxHash TEXT;"); } catch {}
-  try { db.exec("ALTER TABLE positions ADD COLUMN arkivExpiresAt INTEGER;"); } catch {}
-  try { db.exec("ALTER TABLE trades ADD COLUMN arkivEntityKey TEXT;"); } catch {}
-  try { db.exec("ALTER TABLE trades ADD COLUMN arkivTxHash TEXT;"); } catch {}
-  try { db.exec("ALTER TABLE trades ADD COLUMN arkivExpiresAt INTEGER;"); } catch {}
+  try { db.exec("ALTER TABLE positions ADD COLUMN arkivEntityKey TEXT;"); } catch { }
+  try { db.exec("ALTER TABLE positions ADD COLUMN arkivTxHash TEXT;"); } catch { }
+  try { db.exec("ALTER TABLE positions ADD COLUMN arkivExpiresAt INTEGER;"); } catch { }
+  try { db.exec("ALTER TABLE trades ADD COLUMN arkivEntityKey TEXT;"); } catch { }
+  try { db.exec("ALTER TABLE trades ADD COLUMN arkivTxHash TEXT;"); } catch { }
+  try { db.exec("ALTER TABLE trades ADD COLUMN arkivExpiresAt INTEGER;"); } catch { }
 }
 
 export function getAllPositions(): EventPosition[] {
@@ -185,8 +185,8 @@ export function syncTradesFromPositions() {
         pos.status === "PROFIT_TAKEN"
           ? "EXIT_TAKE_PROFIT"
           : pos.status === "STOPPED_OUT"
-          ? "EXIT_STOP_LOSS"
-          : "EXIT_SELL";
+            ? "EXIT_STOP_LOSS"
+            : "EXIT_SELL";
 
       insertTradeStmt.run({
         id: exitTradeId,
@@ -330,7 +330,7 @@ export function saveTrade(trade: AgentTradeRecord): AgentTradeRecord {
           db.prepare(
             "UPDATE trades SET arkivEntityKey = ?, arkivTxHash = ?, arkivExpiresAt = ? WHERE id = ?"
           ).run(res.entityKey, res.txHash || null, Date.now() + 90 * 86400 * 1000, trade.id);
-        } catch {}
+        } catch { }
       }
     });
   }
@@ -499,7 +499,7 @@ export function savePosition(pos: EventPosition): EventPosition {
           db.prepare(
             "UPDATE positions SET arkivEntityKey = ?, arkivTxHash = ?, arkivExpiresAt = ? WHERE id = ?"
           ).run(res.entityKey, res.txHash || null, Date.now() + 30 * 86400 * 1000, pos.id);
-        } catch {}
+        } catch { }
       }
     });
   }

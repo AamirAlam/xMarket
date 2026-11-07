@@ -127,6 +127,10 @@ export interface EventPosition {
   sweepTxHash?: string;
   triggeredTweet?: string;
   agentWallet?: AgentWalletInfo;
+  // Arkiv DB-Chain Integration
+  arkivEntityKey?: string;
+  arkivTxHash?: string;
+  arkivExpiresAt?: number;
 }
 
 export interface AuditExecutionRecord {
@@ -135,7 +139,7 @@ export interface AuditExecutionRecord {
   tweet: DetectedTweet;
   zeroG: ZeroGInferenceResult;
   order?: FlashOrderResult;
-  status: "EXECUTED" | "SKIPPED_THRESHOLD" | "FAILED";
+  status: "EXECUTED" | "SKIPPED_THRESHOLD" | "FAILED" | "PENDING";
   reason: string;
 }
 
@@ -171,6 +175,19 @@ export interface AgentTradeRecord {
   triggeredTweet?: string;
   zeroGProofId?: string;
   createdAt: string;
+  // Arkiv DB-Chain Integration
+  arkivEntityKey?: string;
+  arkivTxHash?: string;
+  arkivExpiresAt?: number;
+}
+
+export interface ArkivQueryResult {
+  entityKey: string;
+  owner: string;
+  creator: string;
+  createdAt: string;
+  expiresAt: string;
+  attributes: Record<string, any>;
 }
 
 export interface WalletBalances {

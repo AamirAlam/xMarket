@@ -159,9 +159,8 @@ export function TradesHistoryTable({
               Net Performance
             </span>
             <div
-              className={`text-2xl font-black font-mono flex items-center gap-1 ${
-                totalRealizedPnl >= 0 ? "text-emerald-600" : "text-rose-600"
-              }`}
+              className={`text-2xl font-black font-mono flex items-center gap-1 ${totalRealizedPnl >= 0 ? "text-emerald-600" : "text-rose-600"
+                }`}
             >
               {totalRealizedPnl >= 0 ? "+" : ""}
               ${totalRealizedPnl.toFixed(2)}
@@ -169,11 +168,10 @@ export function TradesHistoryTable({
             <p className="text-[11px] text-slate-500">Combined PnL across executions</p>
           </div>
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
-              totalRealizedPnl >= 0
+            className={`w-10 h-10 rounded-xl flex items-center justify-center border ${totalRealizedPnl >= 0
                 ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                 : "bg-rose-50 text-rose-600 border-rose-100"
-            }`}
+              }`}
           >
             {totalRealizedPnl >= 0 ? (
               <TrendingUp className="w-5 h-5" />
@@ -230,33 +228,30 @@ export function TradesHistoryTable({
               <button
                 type="button"
                 onClick={() => setFilterType("ALL")}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                  filterType === "ALL"
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${filterType === "ALL"
                     ? "bg-white text-blue-600 shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
-                }`}
+                  }`}
               >
                 All ({trades.length})
               </button>
               <button
                 type="button"
                 onClick={() => setFilterType("ENTRY")}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                  filterType === "ENTRY"
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${filterType === "ENTRY"
                     ? "bg-white text-blue-600 shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
-                }`}
+                  }`}
               >
                 Entries
               </button>
               <button
                 type="button"
                 onClick={() => setFilterType("EXIT")}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                  filterType === "EXIT"
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${filterType === "EXIT"
                     ? "bg-white text-blue-600 shadow-2xs"
                     : "text-slate-600 hover:text-slate-900"
-                }`}
+                  }`}
               >
                 Settlements
               </button>
@@ -427,11 +422,10 @@ export function TradesHistoryTable({
                           )}
 
                           <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                              t.side === "LONG"
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${t.side === "LONG"
                                 ? "bg-emerald-50 text-emerald-700"
                                 : "bg-rose-50 text-rose-700"
-                            }`}
+                              }`}
                           >
                             {t.side}
                           </span>
@@ -467,11 +461,10 @@ export function TradesHistoryTable({
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         {t.pnlUsd !== undefined && (t.status === "OPEN" || t.status === "SETTLED") ? (
                           <div
-                            className={`inline-flex items-center gap-1 font-bold font-mono text-xs px-2 py-0.5 rounded-md ${
-                              t.pnlUsd >= 0
+                            className={`inline-flex items-center gap-1 font-bold font-mono text-xs px-2 py-0.5 rounded-md ${t.pnlUsd >= 0
                                 ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                                 : "bg-rose-50 text-rose-800 border border-rose-200"
-                            }`}
+                              }`}
                           >
                             {t.pnlUsd >= 0 ? (
                               <ArrowUpRight className="w-3 h-3 text-emerald-600" />
@@ -526,11 +519,10 @@ export function TradesHistoryTable({
                           <button
                             type="button"
                             onClick={() => setArkivModalTrade(t)}
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold text-[11px] border transition shadow-2xs cursor-pointer ${
-                              t.arkivEntityKey && isValidArkivKey(t.arkivEntityKey)
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold text-[11px] border transition shadow-2xs cursor-pointer ${t.arkivEntityKey && isValidArkivKey(t.arkivEntityKey)
                                 ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200"
                                 : "bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200"
-                            }`}
+                              }`}
                             title="Inspect / Sync Trade Entity on Arkiv DB-Chain"
                           >
                             <Database className="w-2.5 h-2.5 text-amber-600" />

@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { TradingIntent, SentimentDirection, EventPosition, AgentWalletInfo } from "@/types";
-import { createAgentWallet, requestMasterWalletDelegation } from "@/lib/agentWallet";
+import { createAgentWallet, requestMasterWalletDelegation, checkUsdcAllowance } from "@/lib/agentWallet";
+import { fetchRealWalletBalances } from "@/lib/walletBalances";
 import {
   CheckCircle2,
   ArrowRight,
@@ -218,7 +219,47 @@ export function EventTriggerWizard({
   );
   const [copiedWallet, setCopiedWallet] = useState<boolean>(false);
   const [isSigningDelegation, setIsSigningDelegation] = useState<boolean>(false);
+  const [delegationStep, setDelegationStep] = useState<string>("");
   const [signingError, setSigningError] = useState<string | null>(null);
+  const [forceReapprove, setForceReapprove] = useState<boolean>(false);
+  const [allowanceInfo, setAllowanceInfo] = useState<{
+    allowance: bigint;
+    formatted: string;
+    isPreApproved: boolean;
+  } | null>(null);
+  const [walletBalances, setWalletBalances] = useState<{
+    usdc: number;
+    eth: number;
+  } | null>(null);
+
+  // Query real onchain balances and USDC allowance for connected wallet on Arbitrum One
+  useEffect(() => {
+    if (!connectedWallet) return;
+    let isMounted = true;
+
+    fetchRealWalletBalances(connectedWallet).then((b) => {
+      if (isMounted) {
+        setWalletBalances({ usdc: b.usdc, eth: b.eth });
+        // Auto-scale default trade size if user's real USDC balance is low (e.g. $3.41)
+        if (b.usdc > 0 && intent.tradeSizeUsdc > b.usdc) {
+          onChange({
+            ...intent,
+            tradeSizeUsdc: b.usdc >= 1 ? 1.0 : Math.max(0.1, Math.round(b.usdc * 10) / 10),
+          });
+        }
+      }
+    });
+
+    checkUsdcAllowance(connectedWallet, intent.tradeSizeUsdc).then((res) => {
+      if (isMounted) {
+        setAllowanceInfo(res);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [connectedWallet, intent.tradeSizeUsdc]);
 
   // Allow generating a new unique agent wallet on demand
   const handleRegenerateAgentWallet = () => {
@@ -243,11 +284,12 @@ export function EventTriggerWizard({
     setIsSubmitting(true);
     setSigningError(null);
     setIsSigningDelegation(true);
+    setDelegationStep("1/2: Checking network & wallet connection...");
 
     try {
       const master = connectedWallet || "0x71C84A962bFe2487431e50fB79D325603F01498B";
 
-      // Request cryptographic session key delegation from the master connected wallet
+      // Request cryptographic session key delegation and pre-approve Definitive Flash allowance
       const { signature, activeMaster } = await requestMasterWalletDelegation({
         masterController: master,
         agentWalletAddress: agentWallet.address,
@@ -256,6 +298,8 @@ export function EventTriggerWizard({
         targetHandle: intent.targetHandle.replace("@", ""),
         allocatedBudgetUsdc: intent.tradeSizeUsdc,
         sessionExpiry: agentWallet.sessionExpiry || Math.floor(Date.now() / 1000) + 86400 * 30,
+        forceReapprove,
+        onStepProgress: (step) => setDelegationStep(step),
       });
 
       const effectiveMaster = activeMaster || master;
@@ -472,11 +516,10 @@ export function EventTriggerWizard({
                         key={token.symbol}
                         type="button"
                         onClick={() => onChange({ ...intent, targetAsset: token.symbol })}
-                        className={`p-3 rounded-2xl text-left border transition cursor-pointer relative ${
-                          isSelected
-                            ? "border-blue-500 bg-blue-50/90 text-blue-950 font-bold shadow-xs ring-1 ring-blue-500/30"
-                            : "border-slate-200 bg-slate-50/50 text-slate-700 hover:bg-white hover:border-slate-300"
-                        }`}
+                        className={`p-3 rounded-2xl text-left border transition cursor-pointer relative ${isSelected
+                          ? "border-blue-500 bg-blue-50/90 text-blue-950 font-bold shadow-xs ring-1 ring-blue-500/30"
+                          : "border-slate-200 bg-slate-50/50 text-slate-700 hover:bg-white hover:border-slate-300"
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-xs font-bold shadow-2xs">
@@ -504,22 +547,36 @@ export function EventTriggerWizard({
                   </span>
                 </div>
 
+                {/* Real Wallet Balance Indicator */}
+                {walletBalances && (
+                  <div className="flex items-center justify-between text-[11px] px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-slate-500 font-medium">Arbitrum Balance:</span>
+                    <span className="font-mono font-bold text-slate-800">
+                      ${walletBalances.usdc.toFixed(2)} USDC • {walletBalances.eth.toFixed(4)} ETH
+                    </span>
+                  </div>
+                )}
+
                 {/* Quick Amount Chips */}
                 <div className="flex items-center gap-1.5">
-                  {[100, 250, 500, 1000, 2500].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => onChange({ ...intent, tradeSizeUsdc: amt })}
-                      className={`flex-1 py-1.5 rounded-xl text-xs font-mono font-bold border transition cursor-pointer ${
-                        intent.tradeSizeUsdc === amt
+                  {(walletBalances && walletBalances.usdc <= 10
+                    ? [1, 2, 3, Math.floor(walletBalances.usdc)]
+                    : [1, 5, 10, 25, 50, 100]
+                  )
+                    .filter((v, i, a) => v > 0 && a.indexOf(v) === i)
+                    .map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => onChange({ ...intent, tradeSizeUsdc: amt })}
+                        className={`flex-1 py-1.5 rounded-xl text-xs font-mono font-bold border transition cursor-pointer ${intent.tradeSizeUsdc === amt
                           ? "border-blue-500 bg-blue-50 text-blue-700 shadow-2xs ring-1 ring-blue-500/20"
                           : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-white"
-                      }`}
-                    >
-                      ${amt}
-                    </button>
-                  ))}
+                          }`}
+                      >
+                        ${amt}
+                      </button>
+                    ))}
                 </div>
 
                 {/* Amount Input */}
@@ -527,7 +584,8 @@ export function EventTriggerWizard({
                   <span className="absolute left-3.5 top-2.5 text-slate-400 font-mono text-sm font-semibold">$</span>
                   <input
                     type="number"
-                    min="10"
+                    min="0.1"
+                    step="0.1"
                     max="100000"
                     value={intent.tradeSizeUsdc}
                     onChange={(e) => onChange({ ...intent, tradeSizeUsdc: parseFloat(e.target.value) || 0 })}
@@ -553,11 +611,10 @@ export function EventTriggerWizard({
                       key={dir.id}
                       type="button"
                       onClick={() => onChange({ ...intent, sentimentDirection: dir.id as SentimentDirection })}
-                      className={`p-2 rounded-xl text-left border text-xs transition cursor-pointer ${
-                        intent.sentimentDirection === dir.id
-                          ? "border-blue-500 bg-blue-50 text-blue-900 font-bold ring-1 ring-blue-500/20"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                      }`}
+                      className={`p-2 rounded-xl text-left border text-xs transition cursor-pointer ${intent.sentimentDirection === dir.id
+                        ? "border-blue-500 bg-blue-50 text-blue-900 font-bold ring-1 ring-blue-500/20"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        }`}
                     >
                       <div className="font-bold text-[11px] truncate">{dir.label}</div>
                       <div className="text-[9px] text-slate-400 truncate">{dir.sub}</div>
@@ -866,12 +923,106 @@ export function EventTriggerWizard({
                   <div>
                     <span className="text-[9px] uppercase font-bold text-slate-400 block">Scoped Session Authorization</span>
                     <span className="font-mono text-slate-700 text-xs font-semibold">
-                      Allowed Spender: Definitive Flash Router (0x4c27...04B3) • Max ${intent.tradeSizeUsdc} USDC
+                      Allowed Spender: Definitive Flash Router (0x5d00...8f78) • Max ${intent.tradeSizeUsdc} USDC
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 font-bold">
                     Router Locked
                   </span>
+                </div>
+              </div>
+
+              {/* 2-Step Authorization Status Breakdown */}
+              <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-blue-600" />
+                    <span>2-Step Non-Custodial Authorization (Arbitrum One)</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                    MetaMask Flow
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  {/* Step 1: USDC Allowance */}
+                  <div className="p-2.5 rounded-xl border bg-slate-50/70 border-slate-200/80 flex items-start justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-900 text-[11px]">
+                        <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-black">
+                          1
+                        </span>
+                        <span>Definitive Flash Router USDC Allowance</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 pl-5.5">
+                        Permits <code>0x5d00...8f78</code> to pull USDC on demand when a catalyst fires.
+                      </p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      {allowanceInfo?.isPreApproved ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Pre-Approved ({allowanceInfo.formatted})</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                          <span>MetaMask Tx 1 Required</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Step 1 Test/Force Re-Approve Option */}
+                  {allowanceInfo?.isPreApproved && (
+                    <div className="flex items-center justify-between px-2 pt-0.5 text-[11px]">
+                      <label className="flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 select-none">
+                        <input
+                          type="checkbox"
+                          checked={forceReapprove}
+                          onChange={(e) => setForceReapprove(e.target.checked)}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="font-medium text-[11px]">
+                          Force on-chain approval transaction (prompts Popup #1)
+                        </span>
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-mono">Optional</span>
+                    </div>
+                  )}
+
+                  {/* Step 2: Session Delegation Permit */}
+                  <div className="p-2.5 rounded-xl border bg-slate-50/70 border-slate-200/80 flex items-start justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-900 text-[11px]">
+                        <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center font-black">
+                          2
+                        </span>
+                        <span>EIP-712 Session Key Delegation Permit</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 pl-5.5">
+                        Gasless cryptographic signature authorizing the agent to evaluate tweets &amp; trigger trades.
+                      </p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                        <span>{allowanceInfo?.isPreApproved && !forceReapprove ? "1 MetaMask Popup" : "Popup 2 of 2"}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-slate-500 leading-normal pl-0.5">
+                  {allowanceInfo?.isPreApproved && !forceReapprove ? (
+                    <span>
+                      💡 <strong>Notice:</strong> Your connected wallet already has an onchain USDC allowance granted to Definitive Flash. MetaMask will prompt <strong>only 1 signature popup</strong> (the EIP-712 Session Permit). Check the box above if you want to test the approval transaction explicitly.
+                    </span>
+                  ) : (
+                    <span>
+                      💡 <strong>Notice:</strong> MetaMask will prompt <strong>2 sequential popups</strong>: (1) USDC router approval on Arbitrum One, then (2) EIP-712 Session Permit signature.
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -931,7 +1082,7 @@ export function EventTriggerWizard({
                 {isSigningDelegation ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Awaiting EIP-712 Spend Permit Signature...</span>
+                    <span>{delegationStep || "Awaiting MetaMask Permissions Setup..."}</span>
                   </>
                 ) : isSubmitting ? (
                   <>

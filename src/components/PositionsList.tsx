@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { EventPosition, PositionStatus } from "@/types";
 import {
   TrendingUp,
@@ -55,8 +55,60 @@ export function PositionsList({
   const [flashSwapStep, setFlashSwapStep] = useState<string>("");
   const [flashSwapError, setFlashSwapError] = useState<string | null>(null);
   const [flashSwapTxHash, setFlashSwapTxHash] = useState<string | null>(null);
+  const [testSwapAmount, setTestSwapAmount] = useState<number>(1.0);
+  const [liveUsdcBalance, setLiveUsdcBalance] = useState<number | null>(null);
 
-  const handleExecuteRealDefinitiveSwap = async (pos: EventPosition) => {
+  // Fetch live onchain USDC balance for connected wallet
+  useEffect(() => {
+    let isMounted = true;
+    const fetchBalance = async () => {
+      if (typeof window === "undefined") return;
+      const eth = (window as any).ethereum;
+      const account = connectedWallet || (eth?.selectedAddress);
+      if (!account) return;
+
+      try {
+        const usdcAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+        const cleanAddr = account.toLowerCase().replace("0x", "").padStart(64, "0");
+        let balHex = "";
+        if (eth && typeof eth.request === "function") {
+          try {
+            balHex = await eth.request({
+              method: "eth_call",
+              params: [{ to: usdcAddress, data: `0x70a08231${cleanAddr}` }, "latest"],
+            });
+          } catch { }
+        }
+        if (!balHex || balHex === "0x") {
+          const res = await fetch("https://arb1.arbitrum.io/rpc", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "eth_call",
+              params: [{ to: usdcAddress, data: `0x70a08231${cleanAddr}` }, "latest"],
+            }),
+          });
+          const data = await res.json();
+          balHex = data?.result;
+        }
+        if (isMounted && balHex && balHex !== "0x") {
+          const bal = Number(BigInt(balHex)) / 1e6;
+          setLiveUsdcBalance(bal);
+        }
+      } catch (err) {
+        console.warn("Error querying USDC balance:", err);
+      }
+    };
+
+    fetchBalance();
+    return () => {
+      isMounted = false;
+    };
+  }, [connectedWallet, selectedPosition]);
+
+  const handleExecuteRealDefinitiveSwap = async (pos: EventPosition, explicitAmount?: number) => {
     setIsExecutingFlashSwap(true);
     setFlashSwapError(null);
     setFlashSwapTxHash(null);
@@ -68,9 +120,9 @@ export function PositionsList({
       }
 
       // 1. Resolve connected user address
+      setFlashSwapStep("Connecting MetaMask wallet...");
       let activeAccount = connectedWallet;
       if (!activeAccount) {
-        setFlashSwapStep("Connecting MetaMask wallet...");
         const accounts = await eth.request({ method: "eth_requestAccounts" });
         if (!accounts || accounts.length === 0) {
           throw new Error("No wallet account selected in MetaMask.");
@@ -81,8 +133,6 @@ export function PositionsList({
       if (!activeAccount) {
         throw new Error("No active wallet account found.");
       }
-
-      const userWallet: string = activeAccount;
 
       // 2. Ensure active chain is Arbitrum One (42161 / 0xa4b1)
       setFlashSwapStep("Checking network (Arbitrum One)...");
@@ -113,17 +163,89 @@ export function PositionsList({
         }
       }
 
-      // 3. Request Definitive Flash Quote
-      setFlashSwapStep("1/4: Requesting Definitive Flash live quote on Arbitrum One...");
+      // 3. Query real USDC balance on Arbitrum One
+      const usdcAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+      const spenderAddress = "0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78";
+      const cleanAddr = activeAccount.toLowerCase().replace("0x", "").padStart(64, "0");
+
+      const balHex = await eth.request({
+        method: "eth_call",
+        params: [{ to: usdcAddress, data: `0x70a08231${cleanAddr}` }, "latest"],
+      });
+      const currentUsdc = Number(BigInt(balHex || "0x0")) / 1e6;
+
+      if (currentUsdc < 0.1) {
+        throw new Error(
+          `Insufficient USDC balance on Arbitrum One ($${currentUsdc.toFixed(2)} USDC). Please hold at least $1.00 USDC in your connected wallet to execute an onchain swap.`
+        );
+      }
+
+      const swapAmount =
+        explicitAmount !== undefined
+          ? explicitAmount
+          : (testSwapAmount || Math.min(pos.sizeUsdc || 1, currentUsdc >= 1 ? 1.0 : currentUsdc));
+
+      // 4. Verify & prompt USDC approval on DefinitiveFlashAllowance (0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78)
+      setFlashSwapStep("1/4: Checking USDC allowance for Definitive Flash router...");
+      const allowanceCalldata =
+        "0xdd62ed3e" +
+        activeAccount.replace("0x", "").padStart(64, "0").toLowerCase() +
+        spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase();
+
+      const currentAllowanceHex = await eth.request({
+        method: "eth_call",
+        params: [{ to: usdcAddress, data: allowanceCalldata }, "latest"],
+      });
+
+      const currentAllowance = BigInt(currentAllowanceHex || "0x0");
+      const requiredAmount = BigInt(Math.ceil(swapAmount * 1e6));
+
+      if (currentAllowance < requiredAmount) {
+        setFlashSwapStep("1/4: Please approve USDC in MetaMask (transaction 1/2)...");
+        const approveCalldata =
+          "0x095ea7b3" +
+          spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase() +
+          "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+        const approveTx = await eth.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: activeAccount,
+              to: usdcAddress,
+              data: approveCalldata,
+            },
+          ],
+        });
+
+        if (approveTx && typeof approveTx === "string") {
+          setFlashSwapStep("1/4: Waiting for USDC approval to confirm on Arbitrum One...");
+          for (let i = 0; i < 30; i++) {
+            await new Promise((r) => setTimeout(r, 1000));
+            try {
+              const receipt = await eth.request({
+                method: "eth_getTransactionReceipt",
+                params: [approveTx],
+              });
+              if (receipt && receipt.blockNumber) {
+                break;
+              }
+            } catch { }
+          }
+        }
+      }
+
+      // 5. Request Definitive Flash Quote
+      setFlashSwapStep(`2/4: Requesting Definitive Flash live quote on Arbitrum One ($${swapAmount} USDC -> ${pos.targetAsset})...`);
       const quoteRes = await fetch("/api/agent/flash-swap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "QUOTE",
-          funderAddress: userWallet,
+          funderAddress: activeAccount,
           targetAsset: pos.targetAsset || "WETH",
           contraAsset: pos.contraAsset || "USDC",
-          qty: pos.sizeUsdc || 1,
+          qty: swapAmount,
           side: "buy",
         }),
       });
@@ -133,116 +255,62 @@ export function PositionsList({
         throw new Error(quoteData.error || "Failed to fetch Definitive Flash quote");
       }
 
-      // 4. Verify & prompt USDC approval on DefinitiveFlashAllowance (0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78)
-      setFlashSwapStep("2/4: Checking USDC allowance for Definitive Flash contract...");
-      const usdcAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
-      const spenderAddress = "0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78";
-
-      const allowanceCalldata =
-        "0xdd62ed3e" +
-        userWallet.replace("0x", "").padStart(64, "0").toLowerCase() +
-        spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase();
-
-      const currentAllowanceHex = await eth.request({
-        method: "eth_call",
-        params: [{ to: usdcAddress, data: allowanceCalldata }, "latest"],
-      });
-
-      const currentAllowance = BigInt(currentAllowanceHex || "0x0");
-      const requiredAmount = BigInt(Math.round((pos.sizeUsdc || 1) * 1e6));
-
-      if (currentAllowance < requiredAmount) {
-        setFlashSwapStep("2/4: Please approve Definitive Flash in MetaMask...");
-        const approveCalldata =
-          quoteData.evm?.approveTx?.data ||
-          "0x095ea7b3" +
-            spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase() +
-            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-
-        const approveTxHash = await eth.request({
-          method: "eth_sendTransaction",
-          params: [
-            {
-              from: userWallet,
-              to: usdcAddress,
-              data: approveCalldata,
-            },
-          ],
-        });
-
-        setFlashSwapStep(`Approval broadcast (${approveTxHash.slice(0, 10)}...). Waiting for Arbitrum confirmation...`);
-        for (let i = 0; i < 30; i++) {
-          await new Promise((r) => setTimeout(r, 1200));
-          const receipt = await eth.request({
-            method: "eth_getTransactionReceipt",
-            params: [approveTxHash],
-          });
-          if (receipt && receipt.blockNumber) break;
-        }
+      if (!quoteData.evm?.orderTypedData) {
+        throw new Error("Definitive Flash did not return order typed data for signing.");
       }
 
-      // 5. Sign EIP-712 Order Typed Data via MetaMask
-      setFlashSwapStep("3/4: Please sign Definitive Flash order in MetaMask (EIP-712 permit, 0 gas)...");
-      const typedDataStr =
-        typeof quoteData.evm?.orderTypedData === "string"
-          ? quoteData.evm.orderTypedData
-          : JSON.stringify(quoteData.evm?.orderTypedData);
+      // 6. Sign Flash Order in MetaMask (Gasless EIP-712 Permit)
+      setFlashSwapStep("3/4: Please sign Definitive Flash order in MetaMask (gasless EIP-712)...");
+      const orderTypedData =
+        typeof quoteData.evm.orderTypedData === "string"
+          ? JSON.parse(quoteData.evm.orderTypedData)
+          : quoteData.evm.orderTypedData;
 
       const userSignature = await eth.request({
         method: "eth_signTypedData_v4",
-        params: [userWallet, typedDataStr],
+        params: [activeAccount, JSON.stringify(orderTypedData)],
       });
 
-      // 6. Broadcast Signed Order to Definitive Flash Execution Router
-      setFlashSwapStep("4/4: Definitive Flash routing & filling on Arbitrum One...");
+      if (!userSignature) {
+        throw new Error("Definitive Flash order signature was rejected.");
+      }
+
+      // 7. Submit Signed Order to Definitive Flash Execution Router
+      setFlashSwapStep("4/4: Broadcasting order to Definitive Flash solver on Arbitrum One...");
       const submitRes = await fetch("/api/agent/flash-swap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "SUBMIT",
-          funderAddress: userWallet,
+          quoteId: quoteData.quoteId,
+          funderAddress: activeAccount,
           targetAsset: pos.targetAsset || "WETH",
           contraAsset: pos.contraAsset || "USDC",
-          qty: pos.sizeUsdc || 1,
+          qty: swapAmount,
           side: "buy",
-          quoteId: quoteData.quoteId,
           userSignature,
-          evmOrderTypedData: typedDataStr,
+          evmOrderTypedData: quoteData.evm.orderTypedData,
+          positionId: pos.id,
         }),
       });
 
       const submitData = await submitRes.json();
       if (!submitData.success) {
-        throw new Error(submitData.error || "Definitive Flash order execution failed");
+        throw new Error(submitData.error || "Order execution rejected by Definitive Flash router.");
       }
 
-      const txHash = submitData.txHash;
-      const explorerUrl = submitData.explorerUrl || `https://arbiscan.io/tx/${txHash}`;
-      setFlashSwapTxHash(txHash);
-      setFlashSwapStep("Definitive Flash Swap successfully executed on Arbitrum One!");
+      setFlashSwapStep("✓ Authentic on-chain swap executed & confirmed on Arbitrum One!");
+      setFlashSwapTxHash(submitData.txHash);
 
-      const updatedPos: EventPosition = {
-        ...pos,
-        status: "OPEN",
-        txHash,
-        explorerUrl,
-        entryTxHash: txHash,
-        entryExplorerUrl: explorerUrl,
-        triggeredTweet:
-          pos.triggeredTweet ||
-          "Ethereum Pectra upgrade and L2 rollup gas reductions are officially live on mainnet! ETH breakout starting now 🚀",
-        currentPrice: 2840.5,
-        pnlUsd: 0.05,
-        pnlPct: 5.0,
-      };
-
-      setSelectedPosition(updatedPos);
-      if (onPositionUpdated) {
-        await onPositionUpdated(updatedPos);
+      if (submitData.position) {
+        setSelectedPosition(submitData.position);
+        if (onPositionUpdated) {
+          await onPositionUpdated(submitData.position);
+        }
       }
     } catch (err: any) {
-      console.error("Definitive Flash Swap error:", err);
-      setFlashSwapError(err?.message || "Failed to execute Definitive Flash Swap");
+      console.error("Definitive Flash swap execution error:", err);
+      setFlashSwapError(err?.message || "Failed to execute Definitive Flash swap");
     } finally {
       setIsExecutingFlashSwap(false);
     }
@@ -345,11 +413,10 @@ export function PositionsList({
                             e.stopPropagation();
                             setArkivModalPosition(pos);
                           }}
-                          className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold border transition inline-flex items-center gap-1 cursor-pointer ${
-                            pos.arkivEntityKey && isValidArkivKey(pos.arkivEntityKey)
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                              : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
-                          }`}
+                          className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold border transition inline-flex items-center gap-1 cursor-pointer ${pos.arkivEntityKey && isValidArkivKey(pos.arkivEntityKey)
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                            : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                            }`}
                           title="View / Sync Agent Intent on Arkiv DB-Chain"
                         >
                           <Database className="w-2.5 h-2.5 text-amber-600" />
@@ -436,22 +503,8 @@ export function PositionsList({
                   )}
                 </div>
 
-                {/* Col 6: Right Action: View Details & Swap Now */}
-                <div className="flex items-center justify-end shrink-0 gap-2">
-                  {isArmed && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedPosition(pos);
-                        handleExecuteRealDefinitiveSwap(pos);
-                      }}
-                      className="px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-500/20 transition flex items-center gap-1 active:scale-95 cursor-pointer"
-                      title="Execute Real Definitive Flash Swap on Arbitrum One"
-                    >
-                      <Zap className="w-3.5 h-3.5 fill-current" />
-                      <span>Swap Now</span>
-                    </button>
-                  )}
+                {/* Col 6: Right Action: View Details */}
+                <div className="flex items-center justify-end shrink-0">
                   <button
                     type="button"
                     onClick={() => setSelectedPosition(pos)}
@@ -536,15 +589,14 @@ export function PositionsList({
               </div>
 
               {/* Status Pill */}
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-2xs ${
-                selectedPosition.status === "ARMED"
-                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                  : selectedPosition.status === "OPEN"
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-2xs ${selectedPosition.status === "ARMED"
+                ? "bg-blue-50 text-blue-700 border-blue-200"
+                : selectedPosition.status === "OPEN"
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                   : selectedPosition.status === "PAUSED"
-                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                  : "bg-slate-50 text-slate-700 border-slate-200"
-              }`}>
+                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                    : "bg-slate-50 text-slate-700 border-slate-200"
+                }`}>
                 {selectedPosition.status}
               </span>
             </div>
@@ -798,20 +850,71 @@ export function PositionsList({
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-900 flex items-center gap-1.5 text-xs">
                         <Zap className="w-4 h-4 text-emerald-600 fill-emerald-500" />
-                        <span>Execute Real Definitive Flash Swap</span>
+                        <span>Execute Real Definitive Flash Swap (Arbitrum One)</span>
                       </span>
                       <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                         Arbitrum One Live
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Perform an authentic on-chain swap (${selectedPosition.sizeUsdc} USDC &rarr; {selectedPosition.targetAsset}) on Arbitrum One via Definitive Flash Router. Verifies allowance on <code>0x5d00...8f78</code>, requests your non-custodial EIP-712 permit in MetaMask, and broadcasts live.
+                      Perform an authentic, verifiable on-chain swap directly on Arbitrum One via Definitive Flash Router (<code>0x5d00...8f78</code>). Verifies your onchain USDC balance, requests 1 gasless EIP-712 permit in MetaMask, and broadcasts live.
                     </p>
+
+                    {/* Real Wallet Balance & Test Amount Selector */}
+                    <div className="p-3 rounded-xl bg-white border border-emerald-100 space-y-2">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-500 font-medium">Your Arbitrum USDC Balance:</span>
+                        <span className="font-bold font-mono text-emerald-700">
+                          {liveUsdcBalance !== null ? `$${liveUsdcBalance.toFixed(2)} USDC` : "Querying Arbitrum One..."}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mr-1">Swap Size:</span>
+                        {[1, 2, Math.min(selectedPosition.sizeUsdc, liveUsdcBalance ? Math.floor(liveUsdcBalance) : selectedPosition.sizeUsdc)]
+                          .filter((v, i, a) => v > 0 && a.indexOf(v) === i)
+                          .map((amt) => (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => setTestSwapAmount(amt)}
+                              className={`py-1 px-2.5 rounded-lg text-xs font-mono font-bold border transition cursor-pointer ${testSwapAmount === amt
+                                  ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500/20"
+                                  : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-white"
+                                }`}
+                            >
+                              ${amt}.00 USDC
+                            </button>
+                          ))}
+                      </div>
+                    </div>
 
                     {flashSwapError && (
                       <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                         <span>{flashSwapError}</span>
+                      </div>
+                    )}
+
+                    {flashSwapTxHash && (
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs space-y-1">
+                        <div className="font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span>Trade Successfully Executed on Arbitrum One!</span>
+                        </div>
+                        <div className="font-mono text-[11px] truncate text-slate-700">
+                          Tx: {flashSwapTxHash}
+                        </div>
+                        {flashSwapTxHash.startsWith("0x") && (
+                          <a
+                            href={`https://arbiscan.io/tx/${flashSwapTxHash}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
+                          >
+                            <span>View on Arbiscan Block Explorer</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
                       </div>
                     )}
 
@@ -823,11 +926,11 @@ export function PositionsList({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => handleExecuteRealDefinitiveSwap(selectedPosition)}
+                        onClick={() => handleExecuteRealDefinitiveSwap(selectedPosition, testSwapAmount)}
                         className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <Zap className="w-4 h-4 fill-current" />
-                        <span>Execute Real Definitive Flash Swap Now (${selectedPosition.sizeUsdc} USDC)</span>
+                        <span>Execute Real Definitive Flash Swap Now (${testSwapAmount} USDC &rarr; {selectedPosition.targetAsset})</span>
                       </button>
                     )}
                   </div>
@@ -874,8 +977,8 @@ export function PositionsList({
                     </span>
                     <span
                       className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${selectedPosition.status === "PROFIT_TAKEN"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-rose-50 text-rose-700 border-rose-200"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-rose-50 text-rose-700 border-rose-200"
                         }`}
                     >
                       {selectedPosition.status === "PROFIT_TAKEN"
@@ -977,11 +1080,10 @@ export function PositionsList({
                       setIsTogglingPause(false);
                     }
                   }}
-                  className={`px-4 py-2 rounded-full font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
-                    selectedPosition.status === "PAUSED"
-                      ? "bg-blue-600 hover:bg-blue-500 text-white"
-                      : "bg-amber-500 hover:bg-amber-600 text-white"
-                  }`}
+                  className={`px-4 py-2 rounded-full font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${selectedPosition.status === "PAUSED"
+                    ? "bg-blue-600 hover:bg-blue-500 text-white"
+                    : "bg-amber-500 hover:bg-amber-600 text-white"
+                    }`}
                   title={selectedPosition.status === "PAUSED" ? "Resume agent event monitoring & trade triggers" : "Temporarily pause agent event triggers"}
                 >
                   {selectedPosition.status === "PAUSED" ? (
