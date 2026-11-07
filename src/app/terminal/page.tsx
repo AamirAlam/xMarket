@@ -810,44 +810,6 @@ function TerminalContent() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200">
                 {/* 8-Size Area: Flat Cards of Positions & "+ Start New Trade" */}
                 <div className="lg:col-span-8 space-y-4">
-                  {/* Automated Test Swap Banner (10s Post-Creation Trigger) */}
-                  {autoSwapState.positionId && (autoSwapState.countdown > 0 || autoSwapState.step || autoSwapState.txHash) && (
-                    <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-blue-500/15 to-indigo-500/15 border border-emerald-300 shadow-sm flex items-center justify-between gap-3 animate-in fade-in">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                          {autoSwapState.countdown > 0 ? (
-                            <span className="font-mono font-black text-sm">{autoSwapState.countdown}s</span>
-                          ) : (
-                            <Zap className="w-5 h-5 fill-current animate-pulse" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                            <span>Automated Test Swap Trigger (Arbitrum One)</span>
-                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                              {autoSwapState.countdown > 0 ? `Firing in ${autoSwapState.countdown}s` : "Live Execution"}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-600 font-medium mt-0.5">
-                            {autoSwapState.step || `Executing automatic buy order in ${autoSwapState.countdown} seconds...`}
-                          </div>
-                        </div>
-                      </div>
-
-                      {autoSwapState.txHash && (
-                        <a
-                          href={`https://arbiscan.io/tx/${autoSwapState.txHash}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition shrink-0 cursor-pointer"
-                        >
-                          <span>View on Arbiscan</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                    </div>
-                  )}
-
                   <PositionsList
                     positions={positions}
                     onStartNewTrade={() => setIsCreatingTrade(true)}
@@ -855,7 +817,6 @@ function TerminalContent() {
                     onEmergencySweep={handleEmergencySweep}
                     onTogglePausePosition={handleTogglePausePosition}
                     connectedWallet={walletAddress}
-                    autoSwapInfo={autoSwapState}
                     onPositionUpdated={async (updatedPos) => {
                       setPositions((prev) =>
                         prev.map((p) => (p.id === updatedPos.id ? updatedPos : p))
