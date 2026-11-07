@@ -23,7 +23,7 @@ import {
 } from "@/types";
 import { createAgentWallet } from "@/lib/agentWallet";
 import { fetchRealWalletBalances } from "@/lib/walletBalances";
-import { History, ExternalLink, ArrowLeft, Plus, ShieldCheck, PieChart, TrendingUp, RefreshCw, Wallet, Coins, Check, Copy } from "lucide-react";
+import { History, ExternalLink, ArrowLeft, Plus, ShieldCheck, PieChart, TrendingUp, RefreshCw, Wallet, Coins, Check, Copy, Zap } from "lucide-react";
 import Link from "next/link";
 
 function TerminalContent() {
@@ -403,6 +403,21 @@ function TerminalContent() {
               p.eventName.toLowerCase() === intent.eventName.toLowerCase())
         );
 
+        // Strict guard: if an ARMED agent exists for this catalyst, ONLY evaluate if tweet was posted AFTER agent creation
+        if (armedPos) {
+          const tweetTime = new Date(tweet.createdAt).getTime();
+          const agentCreationTime = new Date(armedPos.createdAt).getTime();
+          if (tweetTime <= agentCreationTime) {
+            console.log(
+              `[Evaluation Skipped] Tweet from @${tweet.author} (${tweet.createdAt}) was published before agent ${armedPos.id} creation (${armedPos.createdAt}). Ignoring old tweet.`
+            );
+            setSkipReason(
+              `Tweet published at ${new Date(tweet.createdAt).toLocaleTimeString()} is older than agent creation (${new Date(armedPos.createdAt).toLocaleTimeString()}). Live agents strictly evaluate tweets created after deployment.`
+            );
+            return;
+          }
+        }
+
         // 2. If NO matching ARMED position exists, evaluate for telemetry only.
         // NEVER execute onchain orders and NEVER create random/auto position cards!
         if (!armedPos) {
@@ -568,10 +583,10 @@ function TerminalContent() {
         }
 
         // 1. Listen ONLY for running agent accounts (ARMED or OPEN)
+        const activePositions = positionsRef.current.filter((p) => p.status === "ARMED" || p.status === "OPEN");
         const runningAgentHandles = Array.from(
           new Set(
-            positionsRef.current
-              .filter((p) => p.status === "ARMED" || p.status === "OPEN")
+            activePositions
               .map((p) => p.targetHandle.replace("@", "").trim())
               .filter(Boolean)
           )
@@ -593,10 +608,25 @@ function TerminalContent() {
           setCurrentPollingHandle(handle);
           setQueueProgress({ current: i + 1, total: handlesToPoll.length });
 
+          // Find earliest creation timestamp among active agents for this handle
+          const activeForHandle = activePositions.filter(
+            (p) => p.targetHandle.toLowerCase().replace("@", "").trim() === handle.toLowerCase()
+          );
+          const agentCreatedAt =
+            activeForHandle.length > 0
+              ? activeForHandle.reduce(
+                  (min, p) => (new Date(p.createdAt).getTime() < new Date(min).getTime() ? p.createdAt : min),
+                  activeForHandle[0].createdAt
+                )
+              : undefined;
+
           let url = `/api/agent/listen?handle=${encodeURIComponent(handle)}`;
           const sinceId = lastTweetIdsRef.current[handle];
           if (sinceId) {
             url += `&sinceId=${encodeURIComponent(sinceId)}`;
+          }
+          if (agentCreatedAt) {
+            url += `&createdAfter=${encodeURIComponent(agentCreatedAt)}`;
           }
 
           try {
@@ -604,13 +634,20 @@ function TerminalContent() {
             const data = await res.json();
 
             if (data.success && data.tweets && data.tweets.length > 0) {
-              const freshTweet = data.tweets[0];
-              lastTweetIdsRef.current[handle] = freshTweet.id;
-              setLastTweetId(freshTweet.id);
-              setLatestTweet(freshTweet);
+              // Client-side strict filter: only tweets created strictly after agent creation
+              const validTweets = agentCreatedAt
+                ? data.tweets.filter((t: DetectedTweet) => new Date(t.createdAt).getTime() > new Date(agentCreatedAt!).getTime())
+                : data.tweets;
 
-              // Evaluate tweet sentiment & execute trade if agent is armed
-              await processTweetEvaluation(freshTweet);
+              if (validTweets.length > 0) {
+                const freshTweet = validTweets[0];
+                lastTweetIdsRef.current[handle] = freshTweet.id;
+                setLastTweetId(freshTweet.id);
+                setLatestTweet(freshTweet);
+
+                // Evaluate tweet sentiment & execute trade if agent is armed
+                await processTweetEvaluation(freshTweet);
+              }
             }
           } catch (pollErr) {
             console.warn(`Error polling handle @${handle}:`, pollErr);
@@ -653,14 +690,43 @@ function TerminalContent() {
     if (!clean) return;
     setIsInjecting(true);
     try {
-      const res = await fetch(`/api/agent/listen?handle=${encodeURIComponent(clean)}`);
+      const activePositions = positionsRef.current.filter((p) => p.status === "ARMED" || p.status === "OPEN");
+      const activeForHandle = activePositions.filter(
+        (p) => p.targetHandle.toLowerCase().replace("@", "").trim() === clean.toLowerCase()
+      );
+      const agentCreatedAt =
+        activeForHandle.length > 0
+          ? activeForHandle.reduce(
+              (min, p) => (new Date(p.createdAt).getTime() < new Date(min).getTime() ? p.createdAt : min),
+              activeForHandle[0].createdAt
+            )
+          : undefined;
+
+      let url = `/api/agent/listen?handle=${encodeURIComponent(clean)}`;
+      if (agentCreatedAt) {
+        url += `&createdAfter=${encodeURIComponent(agentCreatedAt)}`;
+      }
+
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success && data.tweets && data.tweets.length > 0) {
-        const freshTweet = data.tweets[0];
-        lastTweetIdsRef.current[clean] = freshTweet.id;
-        setLastTweetId(freshTweet.id);
-        setLatestTweet(freshTweet);
-        await processTweetEvaluation(freshTweet);
+        const validTweets = agentCreatedAt
+          ? data.tweets.filter((t: DetectedTweet) => new Date(t.createdAt).getTime() > new Date(agentCreatedAt!).getTime())
+          : data.tweets;
+
+        if (validTweets.length > 0) {
+          const freshTweet = validTweets[0];
+          lastTweetIdsRef.current[clean] = freshTweet.id;
+          setLastTweetId(freshTweet.id);
+          setLatestTweet(freshTweet);
+          await processTweetEvaluation(freshTweet);
+        } else {
+          setSkipReason(`No new tweets from @${clean} posted after agent deployment (${new Date(agentCreatedAt!).toLocaleTimeString()}).`);
+        }
+      } else {
+        if (agentCreatedAt) {
+          setSkipReason(`No new tweets from @${clean} posted after agent deployment (${new Date(agentCreatedAt).toLocaleTimeString()}).`);
+        }
       }
     } catch (err) {
       console.error("Fetch person tweet error:", err);
@@ -744,6 +810,44 @@ function TerminalContent() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200">
                 {/* 8-Size Area: Flat Cards of Positions & "+ Start New Trade" */}
                 <div className="lg:col-span-8 space-y-4">
+                  {/* Automated Test Swap Banner (10s Post-Creation Trigger) */}
+                  {autoSwapState.positionId && (autoSwapState.countdown > 0 || autoSwapState.step || autoSwapState.txHash) && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-blue-500/15 to-indigo-500/15 border border-emerald-300 shadow-sm flex items-center justify-between gap-3 animate-in fade-in">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                          {autoSwapState.countdown > 0 ? (
+                            <span className="font-mono font-black text-sm">{autoSwapState.countdown}s</span>
+                          ) : (
+                            <Zap className="w-5 h-5 fill-current animate-pulse" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                            <span>Automated Test Swap Trigger (Arbitrum One)</span>
+                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                              {autoSwapState.countdown > 0 ? `Firing in ${autoSwapState.countdown}s` : "Live Execution"}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-600 font-medium mt-0.5">
+                            {autoSwapState.step || `Executing automatic buy order in ${autoSwapState.countdown} seconds...`}
+                          </div>
+                        </div>
+                      </div>
+
+                      {autoSwapState.txHash && (
+                        <a
+                          href={`https://arbiscan.io/tx/${autoSwapState.txHash}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition shrink-0 cursor-pointer"
+                        >
+                          <span>View on Arbiscan</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  )}
+
                   <PositionsList
                     positions={positions}
                     onStartNewTrade={() => setIsCreatingTrade(true)}
@@ -751,6 +855,7 @@ function TerminalContent() {
                     onEmergencySweep={handleEmergencySweep}
                     onTogglePausePosition={handleTogglePausePosition}
                     connectedWallet={walletAddress}
+                    autoSwapInfo={autoSwapState}
                     onPositionUpdated={async (updatedPos) => {
                       setPositions((prev) =>
                         prev.map((p) => (p.id === updatedPos.id ? updatedPos : p))
@@ -767,16 +872,23 @@ function TerminalContent() {
                 {/* 4-Size Area: Tweets Tracking & Checking Loader Sign */}
                 <div className="lg:col-span-4">
                   {(() => {
+                    const activePositions = positions.filter((p) => p.status === "ARMED" || p.status === "OPEN");
                     const runningHandles = Array.from(
                       new Set(
-                        positions
-                          .filter((p) => p.status === "ARMED" || p.status === "OPEN")
+                        activePositions
                           .map((p) => p.targetHandle.replace("@", "").trim())
                           .filter(Boolean)
                       )
                     );
                     const activeHandle = runningHandles.length > 0 ? runningHandles[0] : intent.targetHandle;
                     const activeTrackedHandles = runningHandles.length > 0 ? runningHandles : [intent.targetHandle];
+                    const earliestAgentCreatedAt =
+                      activePositions.length > 0
+                        ? activePositions.reduce(
+                            (min, p) => (new Date(p.createdAt).getTime() < new Date(min).getTime() ? p.createdAt : min),
+                            activePositions[0].createdAt
+                          )
+                        : undefined;
 
                     return (
                       <LiveMonitor
@@ -792,6 +904,8 @@ function TerminalContent() {
                         currentCheckingHandle={currentPollingHandle}
                         queueProgress={queueProgress}
                         onToggleListening={() => setIsListening(!isListening)}
+                        agentCreatedAt={earliestAgentCreatedAt}
+                        hasActiveAgents={activePositions.length > 0}
                       />
                     );
                   })()}

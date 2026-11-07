@@ -10,6 +10,7 @@ import {
   Heart,
   Share2,
   BarChart2,
+  Radio,
 } from "lucide-react";
 
 interface LiveMonitorProps {
@@ -25,6 +26,8 @@ interface LiveMonitorProps {
   currentCheckingHandle?: string;
   queueProgress?: { current: number; total: number };
   onToggleListening?: () => void;
+  agentCreatedAt?: string;
+  hasActiveAgents?: boolean;
 }
 
 interface AuthorProfile {
@@ -222,8 +225,13 @@ export function LiveMonitor({
   currentCheckingHandle,
   queueProgress,
   onToggleListening,
+  agentCreatedAt,
+  hasActiveAgents = false,
 }: LiveMonitorProps) {
-  const [tweetFeed, setTweetFeed] = useState<DetectedTweet[]>(DEFAULT_EVENT_TWEETS);
+  // If active agents exist, do NOT show default/old mock tweets; start empty or with tweets created after agent deployment
+  const [tweetFeed, setTweetFeed] = useState<DetectedTweet[]>(() =>
+    hasActiveAgents ? [] : DEFAULT_EVENT_TWEETS
+  );
   const [likedTweets, setLikedTweets] = useState<Record<string, boolean>>({});
   const [retweetedTweets, setRetweetedTweets] = useState<Record<string, boolean>>({});
   const [personInput, setPersonInput] = useState<string>("");
@@ -240,36 +248,83 @@ export function LiveMonitor({
     )
   );
 
-  // Automatically fetch live tweets for the active running agent handle
+  // When active agents are armed or deployed, strictly purge any old tweets created before agent creation
+  useEffect(() => {
+    if (hasActiveAgents) {
+      if (agentCreatedAt) {
+        const minTime = new Date(agentCreatedAt).getTime();
+        setTweetFeed((prev) =>
+          prev.filter(
+            (t) =>
+              t.id !== "tw-fomc-101" &&
+              t.id !== "tw-vitalik-102" &&
+              new Date(t.createdAt).getTime() > minTime
+          )
+        );
+      } else {
+        setTweetFeed((prev) =>
+          prev.filter((t) => t.id !== "tw-fomc-101" && t.id !== "tw-vitalik-102")
+        );
+      }
+    }
+  }, [hasActiveAgents, agentCreatedAt]);
+
+  // Automatically fetch live tweets for the active running agent handle (filtering strictly for tweets published after agent creation)
   useEffect(() => {
     const primaryHandle = cleanTrackedHandles[0];
     if (!primaryHandle) return;
 
-    fetch(`/api/agent/listen?handle=${encodeURIComponent(primaryHandle)}`)
+    let url = `/api/agent/listen?handle=${encodeURIComponent(primaryHandle)}`;
+    if (agentCreatedAt) {
+      url += `&createdAfter=${encodeURIComponent(agentCreatedAt)}`;
+    }
+
+    fetch(url)
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.tweets && data.tweets.length > 0) {
-          setTweetFeed((prev) => {
-            const liveTweets = data.tweets.slice(0, 5);
-            const nonDefaultPrev = prev.filter(
-              (p) => p.id !== "tw-fomc-101" && p.id !== "tw-vitalik-102"
-            );
-            const merged = [...liveTweets];
-            for (const t of nonDefaultPrev) {
-              if (!merged.some((m) => m.id === t.id)) {
-                merged.push(t);
+          const minTime = agentCreatedAt ? new Date(agentCreatedAt).getTime() : 0;
+          const freshOnly = minTime > 0
+            ? data.tweets.filter((t: DetectedTweet) => new Date(t.createdAt).getTime() > minTime)
+            : data.tweets;
+
+          if (freshOnly.length > 0) {
+            setTweetFeed((prev) => {
+              const liveTweets = freshOnly.slice(0, 5);
+              const nonDefaultPrev = prev.filter(
+                (p) =>
+                  p.id !== "tw-fomc-101" &&
+                  p.id !== "tw-vitalik-102" &&
+                  (minTime === 0 || new Date(p.createdAt).getTime() > minTime)
+              );
+              const merged = [...liveTweets];
+              for (const t of nonDefaultPrev) {
+                if (!merged.some((m) => m.id === t.id)) {
+                  merged.push(t);
+                }
               }
-            }
-            return merged;
-          });
+              return merged;
+            });
+          } else if (hasActiveAgents) {
+            setTweetFeed([]);
+          }
+        } else if (hasActiveAgents) {
+          setTweetFeed([]);
         }
       })
       .catch(() => {});
-  }, [cleanTrackedHandles[0]]);
+  }, [cleanTrackedHandles[0], agentCreatedAt, hasActiveAgents]);
 
-  // When latestTweet updates, prepend it to the top of the feed
+  // When latestTweet updates, only prepend it if it was created AFTER agent creation
   useEffect(() => {
     if (latestTweet) {
+      if (agentCreatedAt) {
+        const minTime = new Date(agentCreatedAt).getTime();
+        const tweetTime = new Date(latestTweet.createdAt).getTime();
+        if (tweetTime <= minTime) {
+          return;
+        }
+      }
       setTweetFeed((prev) => {
         if (prev.some((t) => t.id === latestTweet.id || t.text === latestTweet.text)) {
           return prev;
@@ -277,7 +332,7 @@ export function LiveMonitor({
         return [latestTweet, ...prev];
       });
     }
-  }, [latestTweet]);
+  }, [latestTweet, agentCreatedAt]);
 
   const toggleLike = (id: string) => {
     setLikedTweets((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -414,8 +469,39 @@ export function LiveMonitor({
       <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col pt-2">
         {/* Tweets Feed: Only tweets scroll, slide & hide behind loader if more content */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-1 pb-36 scroll-smooth">
-          {tweetFeed.map((tweet) => {
-            const profile = getAuthorProfile(tweet.author);
+          {tweetFeed.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-3 my-auto">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50/90 border border-blue-200/80 flex items-center justify-center text-blue-600 shadow-xs">
+                <Radio className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-slate-800 tracking-tight">
+                  {cleanTrackedHandles.length > 0
+                    ? `Sentinel Armed for @${cleanTrackedHandles[0]}`
+                    : "Real-time Event Sentinel Armed"}
+                </h4>
+                <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                  {agentCreatedAt ? (
+                    <>
+                      Agent deployed at{" "}
+                      <span className="font-semibold text-slate-700">
+                        {new Date(agentCreatedAt).toLocaleTimeString()}
+                      </span>
+                      . Radar is armed and strictly filtering for new tweets published <em>after</em> deployment.
+                    </>
+                  ) : (
+                    "Radar is actively scanning for upcoming market catalysts in real-time."
+                  )}
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-[11px] font-semibold text-emerald-700 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                <span>Strict Post-Deployment Filter Active</span>
+              </div>
+            </div>
+          ) : (
+            tweetFeed.map((tweet) => {
+              const profile = getAuthorProfile(tweet.author);
             const social = getDeterministicStats(tweet.id);
             const isLiked = !!likedTweets[tweet.id];
             const isRetweeted = !!retweetedTweets[tweet.id];
@@ -553,7 +639,7 @@ export function LiveMonitor({
                 </div>
               </div>
             );
-          })}
+          }))}
           <div ref={feedBottomRef} className="h-2" />
         </div>
 

@@ -89,6 +89,12 @@ export interface AgentWalletInfo {
   sessionExpiry?: number;
   accountType: "ERC4337_SMART_ACCOUNT" | "SAFE_SESSION_MODULE" | "DELEGATED_MAIN_WALLET_AGENT";
   policy?: SmartAccountPolicy;
+  preSignedOrder?: {
+    quoteId: string;
+    userSignature: string;
+    evmOrderTypedData: any;
+    qty?: number;
+  };
 }
 
 export type PositionStatus = "ARMED" | "OPEN" | "PAUSED" | "CLOSED" | "PROFIT_TAKEN" | "STOPPED_OUT";

@@ -22,9 +22,181 @@ import {
   RefreshCw,
   AlertCircle,
   Database,
+  ArrowDown,
+  ChevronsUpDown,
+  MoreHorizontal,
 } from "lucide-react";
 import { ArkivEntityModal } from "@/components/ArkivEntityModal";
 import { isValidArkivKey } from "@/lib/arkiv";
+
+function ArbitrumBadgeIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M12 1.5L2.5 7v10L12 22.5l9.5-5.5V7L12 1.5z"
+        fill="#28A0F0"
+      />
+      <path
+        d="M12.03 6.22l-5.4 8.52h2.63l1.39-2.2 2.6 4.09h2.63l-3.85-6.03 1.68-2.65-1.68-1.73z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M15.15 14.74h2.63l-1.68-2.65-1.39 2.2.44.45z"
+        fill="#96BEDC"
+      />
+    </svg>
+  );
+}
+
+function UsdcTokenIcon({ size = 44 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="20" fill="#2775CA" />
+      <circle cx="20" cy="20" r="16.5" stroke="#7BAAE0" strokeWidth="1.2" strokeOpacity="0.4" />
+      <path
+        d="M21.75 17.25c0-2.25-1.38-3-4-3.38-1.88-.25-2.25-.75-2.25-1.63 0-.88.75-1.5 2.13-1.5 1.38 0 2.13.5 2.5 1.38.13.25.38.38.63.25l1.38-.75c.25-.13.25-.38.13-.63-.63-1.38-2-2.25-3.88-2.5v-1.75c0-.25-.25-.5-.5-.5h-1.25c-.25 0-.5.25-.5.5v1.63c-2.13.38-3.5 1.75-3.5 3.5 0 2.25 1.38 3.13 4 3.5 1.88.38 2.25.75 2.25 1.75 0 1-1 1.63-2.38 1.63-1.75 0-2.63-.75-3-1.75-.13-.25-.38-.38-.63-.25l-1.5.75c-.25.13-.25.38-.13.63.63 1.63 2.25 2.63 4.5 2.88v1.75c0 .25.25.5.5.5h1.25c.25 0 .5-.25.5-.5v-1.75c2.13-.38 3.63-1.75 3.63-3.63z"
+        fill="#FFFFFF"
+      />
+    </svg>
+  );
+}
+
+function WbtcTokenIcon({ size = 44 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="19.5" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1" />
+      <circle cx="20" cy="20" r="16.5" fill="#F7931A" />
+      <path
+        d="M26.5 17.6c.32-1.92-1.18-2.95-3.17-3.64l.65-2.6-1.58-.4-.63 2.53c-.42-.1-.85-.2-1.27-.3l.64-2.56-1.58-.39-.65 2.6c-.35-.08-.69-.16-1.02-.24l.01-.03-2.19-.55-.42 1.7s1.17.27 1.15.28c.64.16.76.59.74.93l-.74 2.98c.05.01.1.03.16.05-.05-.02-.11-.03-.16-.05l-1.04 4.19c-.08.19-.27.49-.72.38.02.03-1.15-.28-1.15-.28l-.79 1.82 2.06.51c.38.1.76.19 1.14.28l-.66 2.65 1.58.4.65-2.61c.43.12.85.22 1.26.32l-.64 2.58 1.58.4.66-2.64c2.7.51 4.74.3 5.59-2.14.69-1.96-.04-3.09-1.45-3.83 1.03-.24 1.8-.92 2.01-2.31zm-3.6 5.05c-.5 1.97-3.81.9-4.88.64l.87-3.49c1.07.27 4.52.8 4.01 2.85zm.5-5.08c-.45 1.8-3.21.89-4.11.66l.79-3.17c.9.23 3.79.65 3.32 2.51z"
+        fill="#FFFFFF"
+      />
+    </svg>
+  );
+}
+
+function WethTokenIcon({ size = 44 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="20" fill="#627EEA" />
+      <g fill="#FFFFFF" fillOpacity="0.95">
+        <path d="M20 7l-7 11.6 7 4.2 7-4.2L20 7z" />
+        <path d="M20 7v15.8l7-4.2L20 7z" fillOpacity="0.8" />
+        <path d="M20 24.3l-7-4.2 7 9.9 7-9.9-7 4.2z" />
+        <path d="M20 24.3v9.9l7-9.9-7-4.2z" fillOpacity="0.8" />
+      </g>
+    </svg>
+  );
+}
+
+function ArbTokenIcon({ size = 44 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="20" fill="#28A0F0" />
+      <path
+        d="M20 9l-9 14.5h4.4l2.3-3.7 4.3 6.9h4.4l-6.4-10.2 2.8-4.5-2.8-3z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M25.2 23.5h4.4l-2.8-4.5-2.3 3.7.7.8z"
+        fill="#96BEDC"
+      />
+    </svg>
+  );
+}
+
+function SolTokenIcon({ size = 44 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="20" fill="#141416" />
+      <path
+        d="M13 24.5l2.2-2.2c.2-.2.5-.3.8-.3h10.3c.5 0 .8.6.5.9l-2.2 2.2c-.2.2-.5.3-.8.3H13.5c-.5 0-.8-.6-.5-.9zm0-6.7l2.2-2.2c.2-.2.5-.3.8-.3h10.3c.5 0 .8.6.5.9l-2.2 2.2c-.2.2-.5.3-.8.3H13.5c-.5 0-.8-.6-.5-.9zm14-4.6l-2.2-2.2c-.2-.2-.5-.3-.8-.3H13.7c-.5 0-.8.6-.5.9l2.2 2.2c.2.2.5.3.8.3h10.3c.5 0 .8-.6.5-.9z"
+        fill="url(#sol_grad)"
+      />
+      <defs>
+        <linearGradient id="sol_grad" x1="13" y1="10" x2="27" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#00FFA3" />
+          <stop offset="1" stopColor="#DC1FFF" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function TokenIcon({ symbol, size = 44, hasChainBadge = true }: { symbol: string; size?: number; hasChainBadge?: boolean }) {
+  const sym = (symbol || "").toUpperCase();
+  let iconNode;
+
+  if (sym.includes("USDC")) {
+    iconNode = <UsdcTokenIcon size={size} />;
+  } else if (sym.includes("BTC")) {
+    iconNode = <WbtcTokenIcon size={size} />;
+  } else if (sym.includes("ETH")) {
+    iconNode = <WethTokenIcon size={size} />;
+  } else if (sym.includes("ARB")) {
+    iconNode = <ArbTokenIcon size={size} />;
+  } else if (sym.includes("SOL")) {
+    iconNode = <SolTokenIcon size={size} />;
+  } else {
+    iconNode = (
+      <div
+        style={{ width: size, height: size }}
+        className="rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-xs"
+      >
+        {sym.slice(0, 3)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative inline-flex shrink-0">
+      {iconNode}
+      {hasChainBadge && (
+        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-slate-900 border-2 border-white flex items-center justify-center shadow-xs">
+          <ArbitrumBadgeIcon className="w-2.5 h-2.5" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SwapHeaderBadge({ avatar, persona, handle }: { avatar?: string; persona?: string; handle?: string }) {
+  return (
+    <div className="relative shrink-0">
+      {avatar ? (
+        <img
+          src={avatar}
+          alt={persona || handle}
+          className="w-11 h-11 rounded-full object-cover object-top border border-slate-200 shadow-xs"
+        />
+      ) : (
+        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+          <RefreshCw className="w-5 h-5 text-white stroke-[2]" />
+        </div>
+      )}
+      <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-white flex items-center justify-center shadow-xs">
+        <ArbitrumBadgeIcon className="w-2.5 h-2.5" />
+      </div>
+    </div>
+  );
+}
+
+function formatSubmittedDate(dateStr?: string) {
+  if (!dateStr) return "November 7, 2026 7:40 AM";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return dateStr;
+  }
+}
 
 interface PositionsListProps {
   positions: EventPosition[];
@@ -46,275 +218,16 @@ export function PositionsList({
   onPositionUpdated,
 }: PositionsListProps) {
   const [selectedPosition, setSelectedPosition] = useState<EventPosition | null>(null);
+  const [showDetails, setShowDetails] = useState(true);
   const [arkivModalPosition, setArkivModalPosition] = useState<EventPosition | null>(null);
   const [copiedTx, setCopiedTx] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
   const [isSweeping, setIsSweeping] = useState(false);
   const [isTogglingPause, setIsTogglingPause] = useState(false);
-  const [isExecutingFlashSwap, setIsExecutingFlashSwap] = useState(false);
-  const [flashSwapStep, setFlashSwapStep] = useState<string>("");
-  const [flashSwapError, setFlashSwapError] = useState<string | null>(null);
-  const [flashSwapTxHash, setFlashSwapTxHash] = useState<string | null>(null);
-  const [testSwapAmount, setTestSwapAmount] = useState<number>(1.0);
-  const [liveUsdcBalance, setLiveUsdcBalance] = useState<number | null>(null);
 
-  // Fetch live onchain USDC balance for connected wallet
-  useEffect(() => {
-    let isMounted = true;
-    const fetchBalance = async () => {
-      if (typeof window === "undefined") return;
-      const eth = (window as any).ethereum;
-      const account = connectedWallet || (eth?.selectedAddress);
-      if (!account) return;
 
-      try {
-        const usdcAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
-        const cleanAddr = account.toLowerCase().replace("0x", "").padStart(64, "0");
-        let balHex = "";
-        if (eth && typeof eth.request === "function") {
-          try {
-            balHex = await eth.request({
-              method: "eth_call",
-              params: [{ to: usdcAddress, data: `0x70a08231${cleanAddr}` }, "latest"],
-            });
-          } catch { }
-        }
-        if (!balHex || balHex === "0x") {
-          const res = await fetch("https://arb1.arbitrum.io/rpc", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              jsonrpc: "2.0",
-              id: 1,
-              method: "eth_call",
-              params: [{ to: usdcAddress, data: `0x70a08231${cleanAddr}` }, "latest"],
-            }),
-          });
-          const data = await res.json();
-          balHex = data?.result;
-        }
-        if (isMounted && balHex && balHex !== "0x") {
-          const bal = Number(BigInt(balHex)) / 1e6;
-          setLiveUsdcBalance(bal);
-        }
-      } catch (err) {
-        console.warn("Error querying USDC balance:", err);
-      }
-    };
 
-    fetchBalance();
-    return () => {
-      isMounted = false;
-    };
-  }, [connectedWallet, selectedPosition]);
 
-  const handleExecuteRealDefinitiveSwap = async (pos: EventPosition, explicitAmount?: number) => {
-    setIsExecutingFlashSwap(true);
-    setFlashSwapError(null);
-    setFlashSwapTxHash(null);
-
-    try {
-      const eth = typeof window !== "undefined" ? (window as any).ethereum : null;
-      if (!eth) {
-        throw new Error("No Web3 wallet (MetaMask) detected in browser. Please install/open MetaMask.");
-      }
-
-      // 1. Resolve connected user address
-      setFlashSwapStep("Connecting MetaMask wallet...");
-      let activeAccount = connectedWallet;
-      if (!activeAccount) {
-        const accounts = await eth.request({ method: "eth_requestAccounts" });
-        if (!accounts || accounts.length === 0) {
-          throw new Error("No wallet account selected in MetaMask.");
-        }
-        activeAccount = accounts[0];
-      }
-
-      if (!activeAccount) {
-        throw new Error("No active wallet account found.");
-      }
-
-      // 2. Ensure active chain is Arbitrum One (42161 / 0xa4b1)
-      setFlashSwapStep("Checking network (Arbitrum One)...");
-      let chainId = await eth.request({ method: "eth_chainId" });
-      if (chainId !== "0xa4b1" && chainId !== "42161" && parseInt(chainId, 16) !== 42161) {
-        try {
-          await eth.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0xa4b1" }],
-          });
-        } catch (switchErr: any) {
-          if (switchErr.code === 4902) {
-            await eth.request({
-              method: "wallet_addEthereumChain",
-              params: [
-                {
-                  chainId: "0xa4b1",
-                  chainName: "Arbitrum One",
-                  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-                  rpcUrls: ["https://arb1.arbitrum.io/rpc"],
-                  blockExplorerUrls: ["https://arbiscan.io"],
-                },
-              ],
-            });
-          } else {
-            throw switchErr;
-          }
-        }
-      }
-
-      // 3. Query real USDC balance on Arbitrum One
-      const usdcAddress = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
-      const spenderAddress = "0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78";
-      const cleanAddr = activeAccount.toLowerCase().replace("0x", "").padStart(64, "0");
-
-      const balHex = await eth.request({
-        method: "eth_call",
-        params: [{ to: usdcAddress, data: `0x70a08231${cleanAddr}` }, "latest"],
-      });
-      const currentUsdc = Number(BigInt(balHex || "0x0")) / 1e6;
-
-      if (currentUsdc < 0.1) {
-        throw new Error(
-          `Insufficient USDC balance on Arbitrum One ($${currentUsdc.toFixed(2)} USDC). Please hold at least $1.00 USDC in your connected wallet to execute an onchain swap.`
-        );
-      }
-
-      const swapAmount =
-        explicitAmount !== undefined
-          ? explicitAmount
-          : (testSwapAmount || Math.min(pos.sizeUsdc || 1, currentUsdc >= 1 ? 1.0 : currentUsdc));
-
-      // 4. Verify & prompt USDC approval on DefinitiveFlashAllowance (0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78)
-      setFlashSwapStep("1/4: Checking USDC allowance for Definitive Flash router...");
-      const allowanceCalldata =
-        "0xdd62ed3e" +
-        activeAccount.replace("0x", "").padStart(64, "0").toLowerCase() +
-        spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase();
-
-      const currentAllowanceHex = await eth.request({
-        method: "eth_call",
-        params: [{ to: usdcAddress, data: allowanceCalldata }, "latest"],
-      });
-
-      const currentAllowance = BigInt(currentAllowanceHex || "0x0");
-      const requiredAmount = BigInt(Math.ceil(swapAmount * 1e6));
-
-      if (currentAllowance < requiredAmount) {
-        setFlashSwapStep("1/4: Please approve USDC in MetaMask (transaction 1/2)...");
-        const approveCalldata =
-          "0x095ea7b3" +
-          spenderAddress.replace("0x", "").padStart(64, "0").toLowerCase() +
-          "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-
-        const approveTx = await eth.request({
-          method: "eth_sendTransaction",
-          params: [
-            {
-              from: activeAccount,
-              to: usdcAddress,
-              data: approveCalldata,
-            },
-          ],
-        });
-
-        if (approveTx && typeof approveTx === "string") {
-          setFlashSwapStep("1/4: Waiting for USDC approval to confirm on Arbitrum One...");
-          for (let i = 0; i < 30; i++) {
-            await new Promise((r) => setTimeout(r, 1000));
-            try {
-              const receipt = await eth.request({
-                method: "eth_getTransactionReceipt",
-                params: [approveTx],
-              });
-              if (receipt && receipt.blockNumber) {
-                break;
-              }
-            } catch { }
-          }
-        }
-      }
-
-      // 5. Request Definitive Flash Quote
-      setFlashSwapStep(`2/4: Requesting Definitive Flash live quote on Arbitrum One ($${swapAmount} USDC -> ${pos.targetAsset})...`);
-      const quoteRes = await fetch("/api/agent/flash-swap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "QUOTE",
-          funderAddress: activeAccount,
-          targetAsset: pos.targetAsset || "WETH",
-          contraAsset: pos.contraAsset || "USDC",
-          qty: swapAmount,
-          side: "buy",
-        }),
-      });
-
-      const quoteData = await quoteRes.json();
-      if (!quoteData.success) {
-        throw new Error(quoteData.error || "Failed to fetch Definitive Flash quote");
-      }
-
-      if (!quoteData.evm?.orderTypedData) {
-        throw new Error("Definitive Flash did not return order typed data for signing.");
-      }
-
-      // 6. Sign Flash Order in MetaMask (Gasless EIP-712 Permit)
-      setFlashSwapStep("3/4: Please sign Definitive Flash order in MetaMask (gasless EIP-712)...");
-      const orderTypedData =
-        typeof quoteData.evm.orderTypedData === "string"
-          ? JSON.parse(quoteData.evm.orderTypedData)
-          : quoteData.evm.orderTypedData;
-
-      const userSignature = await eth.request({
-        method: "eth_signTypedData_v4",
-        params: [activeAccount, JSON.stringify(orderTypedData)],
-      });
-
-      if (!userSignature) {
-        throw new Error("Definitive Flash order signature was rejected.");
-      }
-
-      // 7. Submit Signed Order to Definitive Flash Execution Router
-      setFlashSwapStep("4/4: Broadcasting order to Definitive Flash solver on Arbitrum One...");
-      const submitRes = await fetch("/api/agent/flash-swap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "SUBMIT",
-          quoteId: quoteData.quoteId,
-          funderAddress: activeAccount,
-          targetAsset: pos.targetAsset || "WETH",
-          contraAsset: pos.contraAsset || "USDC",
-          qty: swapAmount,
-          side: "buy",
-          userSignature,
-          evmOrderTypedData: quoteData.evm.orderTypedData,
-          positionId: pos.id,
-        }),
-      });
-
-      const submitData = await submitRes.json();
-      if (!submitData.success) {
-        throw new Error(submitData.error || "Order execution rejected by Definitive Flash router.");
-      }
-
-      setFlashSwapStep("✓ Authentic on-chain swap executed & confirmed on Arbitrum One!");
-      setFlashSwapTxHash(submitData.txHash);
-
-      if (submitData.position) {
-        setSelectedPosition(submitData.position);
-        if (onPositionUpdated) {
-          await onPositionUpdated(submitData.position);
-        }
-      }
-    } catch (err: any) {
-      console.error("Definitive Flash swap execution error:", err);
-      setFlashSwapError(err?.message || "Failed to execute Definitive Flash swap");
-    } finally {
-      setIsExecutingFlashSwap(false);
-    }
-  };
 
   const handleCopyTx = async (tx: string) => {
     try {
@@ -520,597 +433,441 @@ export function PositionsList({
         </div>
       )}
 
-      {/* EVERY DETAIL OF POSITION MODAL */}
-      {selectedPosition && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-[28px] border border-slate-200 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 animate-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between pb-3.5 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                {selectedPosition.avatar ? (
-                  <img
-                    src={selectedPosition.avatar}
-                    alt={selectedPosition.persona || selectedPosition.targetHandle}
-                    className="w-11 h-11 rounded-2xl object-cover object-top border border-slate-200 shadow-xs shrink-0"
+      {/* EVERY DETAIL OF POSITION MODAL (Uniswap Reference UI) */}
+      {selectedPosition && (() => {
+        const txHashToDisplay = selectedPosition.entryTxHash || selectedPosition.txHash || selectedPosition.exitTxHash;
+        const txExplorerUrl = selectedPosition.entryExplorerUrl || selectedPosition.explorerUrl || (txHashToDisplay ? `https://arbiscan.io/tx/${txHashToDisplay}` : undefined);
+        const tokenAmountNum = selectedPosition.entryPrice > 0 ? selectedPosition.sizeUsdc / selectedPosition.entryPrice : 0;
+        const tokenAmountStr = selectedPosition.entryPrice > 0
+          ? (tokenAmountNum < 0.001
+              ? `<0.001 ${selectedPosition.targetAsset}`
+              : `${tokenAmountNum.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${selectedPosition.targetAsset}`)
+          : `0.00 ${selectedPosition.targetAsset}`;
+        const outputUsdVal = (selectedPosition.sizeUsdc + (selectedPosition.pnlUsd || 0)).toFixed(2);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="bg-white rounded-[28px] border border-slate-200/90 shadow-2xl max-w-md w-full max-h-[92vh] overflow-y-auto p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-150">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-1">
+                <div className="flex items-center gap-3">
+                  <SwapHeaderBadge
+                    avatar={selectedPosition.avatar}
+                    persona={selectedPosition.persona}
+                    handle={selectedPosition.targetHandle}
                   />
-                ) : (
-                  <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-medium text-base shrink-0">
-                    ⚡
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 leading-tight">
-                    {selectedPosition.eventName}
-                  </h3>
-                  <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                    <span className="font-normal">@{selectedPosition.targetHandle}</span>
-                    <span>•</span>
-                    <span className="text-blue-600 font-medium">{selectedPosition.targetAsset}/{selectedPosition.contraAsset}</span>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight leading-snug">
+                      {selectedPosition.status === "OPEN"
+                        ? "Swapped"
+                        : selectedPosition.status === "ARMED"
+                        ? "Sentinel Armed"
+                        : selectedPosition.status === "PAUSED"
+                        ? "Agent Paused"
+                        : selectedPosition.status === "PROFIT_TAKEN"
+                        ? "Take-Profit Filled"
+                        : selectedPosition.status === "STOPPED_OUT"
+                        ? "Stop-Loss Filled"
+                        : selectedPosition.eventName}
+                    </h3>
+                    <div className="text-xs text-slate-500 font-normal mt-0.5">
+                      {formatSubmittedDate(selectedPosition.createdAt)}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedPosition(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* PnL & Status Banner */}
-            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">
-                  Realized PnL
-                </span>
-                {selectedPosition.status === "ARMED" ? (
-                  <div className="text-base font-medium text-blue-700 flex items-center gap-1.5 mt-0.5">
-                    <Radio className="w-4 h-4 text-blue-600 animate-pulse stroke-[1.75]" />
-                    <span>Sentinel Armed (Monitoring)</span>
-                  </div>
-                ) : selectedPosition.status === "PAUSED" ? (
-                  <div className="text-base font-medium text-amber-700 flex items-center gap-1.5 mt-0.5">
-                    <Pause className="w-4 h-4 fill-current stroke-[1.75]" />
-                    <span>Agent Paused (Triggers Suspended)</span>
-                  </div>
-                ) : (
-                  <div
-                    className={`text-2xl font-bold mt-0.5 ${selectedPosition.pnlUsd >= 0 ? "text-emerald-600" : "text-rose-600"
-                      }`}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowDetails(!showDetails)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                    title={showDetails ? "Collapse Details" : "Expand Details"}
                   >
-                    {selectedPosition.pnlUsd >= 0 ? `+$${selectedPosition.pnlUsd.toFixed(2)}` : `-$${Math.abs(selectedPosition.pnlUsd).toFixed(2)}`}
-                    <span className="text-sm font-medium ml-1.5">
-                      ({selectedPosition.pnlPct >= 0 ? `+${selectedPosition.pnlPct.toFixed(2)}%` : `${selectedPosition.pnlPct.toFixed(2)}%`})
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Status Pill */}
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-2xs ${selectedPosition.status === "ARMED"
-                ? "bg-blue-50 text-blue-700 border-blue-200"
-                : selectedPosition.status === "OPEN"
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : selectedPosition.status === "PAUSED"
-                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                    : "bg-slate-50 text-slate-700 border-slate-200"
-                }`}>
-                {selectedPosition.status}
-              </span>
-            </div>
-
-            {/* Trade & Execution Parameters */}
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-800 block">Position Parameters</span>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-3 rounded-xl bg-white border border-slate-200/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-medium">Allocation Size</span>
-                  <div className="font-semibold text-slate-900 mt-0.5">
-                    ${selectedPosition.sizeUsdc.toFixed(2)} USDC
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white border border-slate-200/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-medium">Execution Side</span>
-                  <div className="font-semibold text-blue-700 mt-0.5">
-                    {selectedPosition.side} BRACKET
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white border border-slate-200/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-medium">Entry Price</span>
-                  <div className="font-semibold text-slate-900 mt-0.5">
-                    ${selectedPosition.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white border border-slate-200/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-medium">Current Mark Price</span>
-                  <div className="font-semibold text-slate-900 mt-0.5 flex items-center gap-1">
-                    <span>${selectedPosition.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 stroke-[1.75]" />
-                  </div>
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPosition(null)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5 stroke-[2]" />
+                  </button>
                 </div>
               </div>
-            </div>
 
-            {/* Definitive Flash Bracket Configuration */}
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-800 block">Definitive Flash Bracket Limits</span>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-3 rounded-xl bg-emerald-50/40 border border-emerald-200/80">
-                  <span className="text-[10px] text-emerald-700 uppercase font-medium">Take-Profit Leg</span>
-                  <div className="font-bold text-emerald-800 mt-0.5 text-sm">
-                    +{selectedPosition.takeProfitPct}% (${selectedPosition.takeProfitPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })})
-                  </div>
-                  <div className="text-[10px] text-emerald-600 mt-0.5 font-normal">
-                    Target Gain: +${((selectedPosition.sizeUsdc * selectedPosition.takeProfitPct) / 100).toFixed(2)}
-                  </div>
+              {/* Input Token Card (USDC) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100/90 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#00a3ff]">
+                  <ArbitrumBadgeIcon className="w-3.5 h-3.5" />
+                  <span>Arbitrum</span>
                 </div>
-
-                <div className="p-3 rounded-xl bg-rose-50/40 border border-rose-200/80">
-                  <span className="text-[10px] text-rose-700 uppercase font-medium">Stop-Loss Leg</span>
-                  <div className="font-bold text-rose-800 mt-0.5 text-sm">
-                    -{selectedPosition.stopLossPct}% (${selectedPosition.stopLossPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })})
-                  </div>
-                  <div className="text-[10px] text-rose-600 mt-0.5 font-normal">
-                    Max Risk: -${((selectedPosition.sizeUsdc * selectedPosition.stopLossPct) / 100).toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Dedicated Non-Custodial Agent Wallet & Direct Main Wallet Delegation */}
-            {selectedPosition.agentWallet && (
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-blue-50/80 to-indigo-50/80 border border-emerald-200/80 space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                    <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Direct Main Wallet Delegation (Zero Pre-Funding)</span>
+                  <div>
+                    <div className="text-2xl font-bold tracking-tight text-slate-900 font-sans">
+                      {selectedPosition.sizeUsdc.toFixed(2)} {selectedPosition.contraAsset || "USDC"}
+                    </div>
+                    <div className="text-sm font-normal text-slate-500 mt-0.5">
+                      ${selectedPosition.sizeUsdc.toFixed(2)}
+                    </div>
                   </div>
-                  <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-bold">
-                    $0 Deposit Needed
-                  </span>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between font-mono shadow-2xs">
-                  <div className="min-w-0 pr-2">
-                    <span className="text-[9px] text-slate-400 block font-sans uppercase font-bold">Main Connected Wallet (Funds Custody)</span>
-                    <span className="text-slate-800 text-xs font-bold truncate block">{selectedPosition.agentWallet.masterController}</span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyTx(selectedPosition.agentWallet!.masterController)}
-                      className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition cursor-pointer"
-                      title="Copy Master Wallet Address"
-                    >
-                      {copiedTx ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                    </button>
-                    <a
-                      href={`https://arbiscan.io/address/${selectedPosition.agentWallet.masterController}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-blue-600 transition cursor-pointer"
-                      title="View Master Wallet on Arbiscan"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 pt-0.5">
-                  <div className="p-2 rounded-lg bg-white/80 border border-slate-200/80">
-                    <span className="text-slate-400 block font-bold uppercase text-[9px]">Agent Session Executor</span>
-                    <span className="font-mono font-bold text-slate-800 text-[11px] truncate block">
-                      {selectedPosition.agentWallet.sessionKeyAddress ? `${selectedPosition.agentWallet.sessionKeyAddress.slice(0, 8)}...${selectedPosition.agentWallet.sessionKeyAddress.slice(-6)}` : selectedPosition.agentWallet.address.slice(0, 10)}
-                    </span>
-                    <span className="text-[9px] text-blue-600 font-semibold">Definitive Router Locked</span>
-                  </div>
-                  <div className="p-2 rounded-lg bg-white/80 border border-slate-200/80">
-                    <span className="text-slate-400 block font-bold uppercase text-[9px]">Deduction &amp; Routing</span>
-                    <span className="font-bold text-emerald-700 text-[11px] block">
-                      On-Demand (${selectedPosition.sizeUsdc} USDC)
-                    </span>
-                    <span className="text-[9px] text-slate-500 font-medium">Proceeds return to Main</span>
-                  </div>
-                </div>
-
-                <div className="text-[10px] text-slate-600 font-medium leading-relaxed bg-white/70 p-2.5 rounded-xl border border-emerald-100 flex items-start gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Delegated Spend Security:</strong> Funds never left your main wallet prior to trade trigger. When the catalyst fired, Definitive Flash Router deducted ${selectedPosition.sizeUsdc} USDC on-demand via the signed spend permit.
-                  </span>
+                  <TokenIcon symbol={selectedPosition.contraAsset || "USDC"} size={44} />
                 </div>
               </div>
-            )}
 
-            {/* 0G Verifiable TEE Inference Proof */}
-            <div className="p-3.5 rounded-2xl bg-blue-50/40 border border-blue-200/80 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-blue-900 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-blue-600 stroke-[1.75]" />
-                  <span>0G TEE Cryptographic Verification</span>
-                </span>
-                <span className="text-[10px] font-medium text-blue-700 bg-white px-2 py-0.5 rounded-full border border-blue-200">
-                  Proof Verified
-                </span>
+              {/* Indented Down Arrow */}
+              <div className="py-0.5 pl-3 text-slate-400">
+                <ArrowDown className="w-4 h-4 stroke-[2.25]" />
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+              {/* Output Token Card (Target Token) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100/90 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#00a3ff]">
+                  <ArbitrumBadgeIcon className="w-3.5 h-3.5" />
+                  <span>Arbitrum</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold tracking-tight text-slate-900 font-sans">
+                      {tokenAmountStr}
+                    </div>
+                    <div className="text-sm font-normal text-slate-500 mt-0.5">
+                      ${outputUsdVal}
+                    </div>
+                  </div>
+                  <TokenIcon symbol={selectedPosition.targetAsset} size={44} />
+                </div>
+              </div>
+
+              {/* PnL & Flash Bracket Targets Banner */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-500 font-normal block">Confidence Filter:</span>
-                  <span className="text-slate-800 font-semibold">
-                    ≥ {Math.round(selectedPosition.confidenceThreshold * 100)}% 0G Proof
-                  </span>
+                  <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider block">Realized PnL</span>
+                  {selectedPosition.status === "ARMED" ? (
+                    <div className="text-xs font-semibold text-blue-700 flex items-center gap-1.5 mt-0.5">
+                      <Radio className="w-3.5 h-3.5 text-blue-600 animate-pulse stroke-[1.75]" />
+                      <span>Sentinel Armed (Monitoring)</span>
+                    </div>
+                  ) : selectedPosition.status === "PAUSED" ? (
+                    <div className="text-xs font-semibold text-amber-700 flex items-center gap-1.5 mt-0.5">
+                      <Pause className="w-3.5 h-3.5 fill-current stroke-[1.75]" />
+                      <span>Agent Paused</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={`text-base font-bold ${selectedPosition.pnlUsd >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                        {selectedPosition.pnlUsd >= 0 ? `+$${selectedPosition.pnlUsd.toFixed(2)}` : `-$${Math.abs(selectedPosition.pnlUsd).toFixed(2)}`}
+                      </span>
+                      <span className={`text-xs font-semibold ${selectedPosition.pnlPct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                        ({selectedPosition.pnlPct >= 0 ? `+${selectedPosition.pnlPct.toFixed(2)}%` : `${selectedPosition.pnlPct.toFixed(2)}%`})
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 font-normal block">TEE Model:</span>
-                  <span className="text-slate-800 font-medium text-[11px]">
-                    0g-private-llama-3-70b-tee
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    TP +{selectedPosition.takeProfitPct}%
+                  </span>
+                  <span className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                    SL -{selectedPosition.stopLossPct}%
+                  </span>
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                    selectedPosition.status === "OPEN"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : selectedPosition.status === "ARMED"
+                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                      : selectedPosition.status === "PAUSED"
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-slate-50 text-slate-700 border-slate-200"
+                  }`}>
+                    {selectedPosition.status}
                   </span>
                 </div>
               </div>
 
-              {selectedPosition.triggeredTweet && (
-                <div className="pt-2 border-t border-blue-100 text-xs">
-                  <span className="text-[10px] text-slate-500 font-medium uppercase block">Triggered Tweet:</span>
-                  <p className="text-slate-800 italic mt-0.5 text-[11px] font-normal">
-                    &ldquo;{selectedPosition.triggeredTweet}&rdquo;
-                  </p>
-                </div>
-              )}
-            </div>
+              {/* Show more ↕ / Show less ↕ Toggle */}
+              <div className="flex items-center justify-center pt-1 pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShowDetails(!showDetails)}
+                  className="text-xs font-medium text-slate-400 hover:text-slate-600 flex items-center gap-1.5 transition cursor-pointer py-1"
+                >
+                  <span>{showDetails ? "Show less" : "Show more"}</span>
+                  <ChevronsUpDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
-            {/* Real On-Chain Execution Status & Receipts */}
-            <div className="space-y-2.5">
-              <span className="text-xs font-bold text-slate-900 block">
-                On-Chain Execution &amp; Settlements (Arbitrum One)
-              </span>
-
-              {/* State: Position is PAUSED (Temporarily suspended) */}
-              {selectedPosition.status === "PAUSED" && (
-                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-2 text-xs">
+              {/* Uniswap-style Minimalist Details List */}
+              {showDetails && (
+                <div className="space-y-3 pt-2 border-t border-slate-100 text-sm animate-in fade-in duration-150">
+                  {/* Network Cost */}
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-900 flex items-center gap-1.5">
-                      <PauseCircle className="w-4 h-4 text-amber-600 stroke-[1.75]" />
-                      <span>Agent Paused • Event Triggers Suspended</span>
-                    </span>
-                    <span className="text-[10px] font-bold text-amber-700 bg-white px-2.5 py-0.5 rounded-full border border-amber-200">
-                      Paused
+                    <span className="text-slate-500 font-normal">Network cost</span>
+                    <span className="text-slate-900 font-medium flex items-center gap-1.5">
+                      <ArbitrumBadgeIcon className="w-3.5 h-3.5" />
+                      <span>$0.02</span>
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    This agent is currently paused. Incoming X events from <strong>@{selectedPosition.targetHandle}</strong> will be ignored and zero on-chain trades will be executed until you resume this agent.
-                  </p>
-                  <div className="p-3 rounded-xl bg-white border border-amber-100 text-[11px] text-slate-600 space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 font-medium">On-Chain Trigger Status:</span>
-                      <span className="font-bold text-amber-800">Suspended ($0 Deducted)</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 font-medium">Monitored Target:</span>
-                      <span className="font-bold text-slate-700">@{selectedPosition.targetHandle}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* State A: Position is ARMED (Waiting for real X trigger or manual flash swap) */}
-              {selectedPosition.status === "ARMED" && (
-                <div className="space-y-3">
-                  <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200/80 space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-blue-900 flex items-center gap-1.5">
-                        <Radio className="w-4 h-4 text-blue-600 animate-pulse stroke-[1.75]" />
-                        <span>Sentinel Armed &amp; Listening to Real X Events</span>
-                      </span>
-                      <span className="text-[10px] font-bold text-blue-700 bg-white px-2.5 py-0.5 rounded-full border border-blue-200">
-                        Awaiting Trigger
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      This sentinel is actively monitoring public posts from <strong>@{selectedPosition.targetHandle}</strong> matching <em>&ldquo;{selectedPosition.eventName}&rdquo;</em>.
-                    </p>
-                    <div className="p-3 rounded-xl bg-white border border-blue-100 text-[11px] text-slate-600 space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-medium">On-Chain Trade Execution:</span>
-                        <span className="font-bold text-slate-800">Pending Catalyst Event ($0 Deducted)</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-medium">Verification Model:</span>
-                        <span className="font-bold text-blue-700">0G Verifiable TEE (≥{Math.round(selectedPosition.confidenceThreshold * 100)}% Proof)</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-medium">Flash Order Type:</span>
-                        <span className="font-bold text-slate-700">Definitive Flash Market Buy + Attached Bracket</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400 font-medium">Arkiv DB-Chain:</span>
+                  {/* Transaction */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-normal">Transaction</span>
+                    {txHashToDisplay ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-sm text-slate-900">
+                          {`${txHashToDisplay.slice(0, 6)}...${txHashToDisplay.slice(-4)}`}
+                        </span>
                         <button
                           type="button"
-                          onClick={() => setArkivModalPosition(selectedPosition)}
-                          className="font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 cursor-pointer transition"
+                          onClick={() => handleCopyTx(txHashToDisplay)}
+                          className="text-slate-400 hover:text-slate-600 transition p-0.5 cursor-pointer"
+                          title="Copy Transaction Hash"
                         >
-                          <Database className="w-3 h-3 text-amber-600" />
-                          <span>
-                            {selectedPosition.arkivEntityKey && isValidArkivKey(selectedPosition.arkivEntityKey)
-                              ? "Verified on Rabdi (7794095)"
-                              : "xmarket.agent_intent (Inspect / Sync)"}
-                          </span>
+                          {copiedTx ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Real Definitive Flash Swap Trigger */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-blue-500/10 to-indigo-500/10 border border-emerald-300 shadow-xs space-y-3 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 flex items-center gap-1.5 text-xs">
-                        <Zap className="w-4 h-4 text-emerald-600 fill-emerald-500" />
-                        <span>Execute Real Definitive Flash Swap (Arbitrum One)</span>
-                      </span>
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                        Arbitrum One Live
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Perform an authentic, verifiable on-chain swap directly on Arbitrum One via Definitive Flash Router (<code>0x5d00...8f78</code>). Verifies your onchain USDC balance, requests 1 gasless EIP-712 permit in MetaMask, and broadcasts live.
-                    </p>
-
-                    {/* Real Wallet Balance & Test Amount Selector */}
-                    <div className="p-3 rounded-xl bg-white border border-emerald-100 space-y-2">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500 font-medium">Your Arbitrum USDC Balance:</span>
-                        <span className="font-bold font-mono text-emerald-700">
-                          {liveUsdcBalance !== null ? `$${liveUsdcBalance.toFixed(2)} USDC` : "Querying Arbitrum One..."}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 pt-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mr-1">Swap Size:</span>
-                        {[1, 2, Math.min(selectedPosition.sizeUsdc, liveUsdcBalance ? Math.floor(liveUsdcBalance) : selectedPosition.sizeUsdc)]
-                          .filter((v, i, a) => v > 0 && a.indexOf(v) === i)
-                          .map((amt) => (
-                            <button
-                              key={amt}
-                              type="button"
-                              onClick={() => setTestSwapAmount(amt)}
-                              className={`py-1 px-2.5 rounded-lg text-xs font-mono font-bold border transition cursor-pointer ${testSwapAmount === amt
-                                  ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500/20"
-                                  : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-white"
-                                }`}
-                            >
-                              ${amt}.00 USDC
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-
-                    {flashSwapError && (
-                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                        <span>{flashSwapError}</span>
-                      </div>
-                    )}
-
-                    {flashSwapTxHash && (
-                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs space-y-1">
-                        <div className="font-bold flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span>Trade Successfully Executed on Arbitrum One!</span>
-                        </div>
-                        <div className="font-mono text-[11px] truncate text-slate-700">
-                          Tx: {flashSwapTxHash}
-                        </div>
-                        {flashSwapTxHash.startsWith("0x") && (
+                        {txExplorerUrl && (
                           <a
-                            href={`https://arbiscan.io/tx/${flashSwapTxHash}`}
+                            href={txExplorerUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
+                            className="text-slate-400 hover:text-blue-600 transition p-0.5"
+                            title="View on Arbiscan"
                           >
-                            <span>View on Arbiscan Block Explorer</span>
-                            <ExternalLink className="w-3 h-3" />
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         )}
                       </div>
-                    )}
-
-                    {isExecutingFlashSwap ? (
-                      <div className="p-3 rounded-xl bg-white border border-emerald-300 text-slate-800 text-xs flex items-center gap-2 font-medium shadow-2xs">
-                        <RefreshCw className="w-4 h-4 text-emerald-600 animate-spin shrink-0" />
-                        <span className="truncate">{flashSwapStep}</span>
-                      </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleExecuteRealDefinitiveSwap(selectedPosition, testSwapAmount)}
-                        className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Zap className="w-4 h-4 fill-current" />
-                        <span>Execute Real Definitive Flash Swap Now (${testSwapAmount} USDC &rarr; {selectedPosition.targetAsset})</span>
-                      </button>
+                      <span className="text-slate-400 text-xs font-medium">Pending Trigger</span>
                     )}
                   </div>
-                </div>
-              )}
 
-              {/* State B: Real BUY Trade Execution Receipt (Shown once tweet triggers trade) */}
-              {selectedPosition.entryTxHash && (
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-xs">
+                  {/* Submitted On */}
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-blue-700 flex items-center gap-1 text-[11px]">
-                      <span className="w-2 h-2 rounded-full bg-blue-500" />
-                      <span>Real BUY Trade (Entry Swap)</span>
-                    </span>
-                    <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      FILLED (${selectedPosition.sizeUsdc} USDC &rarr; {selectedPosition.targetAsset})
+                    <span className="text-slate-500 font-normal">Submitted on</span>
+                    <span className="text-slate-900 font-medium">
+                      {formatSubmittedDate(selectedPosition.createdAt)}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="truncate max-w-[240px] text-slate-700 text-[11px] font-mono">
-                      {selectedPosition.entryTxHash}
-                    </span>
-                    <a
-                      href={selectedPosition.entryExplorerUrl || `https://arbiscan.io/tx/${selectedPosition.entryTxHash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-600 hover:text-blue-700 font-bold inline-flex items-center gap-0.5 text-xs"
-                    >
-                      <span>Arbiscan</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {/* State C: Real SELL Trade (Only shown if a real exit trade has actually settled) */}
-              {selectedPosition.exitTxHash ? (
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+                  {/* Catalyst Event */}
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
-                      <span className="w-2 h-2 rounded-full bg-purple-500" />
-                      <span>Real SELL Trade (Bracket Exit Settlement)</span>
-                    </span>
-                    <span
-                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${selectedPosition.status === "PROFIT_TAKEN"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-rose-50 text-rose-700 border-rose-200"
-                        }`}
-                    >
-                      {selectedPosition.status === "PROFIT_TAKEN"
-                        ? `FILLED (Take-Profit +${selectedPosition.takeProfitPct}%)`
-                        : `FILLED (Stop-Loss -${selectedPosition.stopLossPct}%)`}
+                    <span className="text-slate-500 font-normal">Catalyst</span>
+                    <span className="text-slate-900 font-medium">
+                      {selectedPosition.eventName} (@{selectedPosition.targetHandle})
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="truncate max-w-[240px] text-slate-700 text-[11px] font-mono">
-                      {selectedPosition.exitTxHash}
-                    </span>
-                    <a
-                      href={selectedPosition.exitExplorerUrl || `https://arbiscan.io/tx/${selectedPosition.exitTxHash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-purple-600 hover:text-purple-700 font-bold inline-flex items-center gap-0.5 text-xs"
-                    >
-                      <span>Arbiscan</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-              ) : selectedPosition.status === "OPEN" ? (
-                /* State D: Position is OPEN, bracket active, can be settled on-demand */
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+                  {/* Entry / Mark Price */}
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
-                      <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                      <span>Definitive Flash Attached Bracket (Monitoring)</span>
-                    </span>
-                    <span className="text-[10px] font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
-                      ACTIVE ON ARBITRUM
+                    <span className="text-slate-500 font-normal">Mark Price</span>
+                    <span className="text-slate-900 font-medium flex items-center gap-1">
+                      <span>${selectedPosition.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 stroke-[2]" />
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-slate-500 font-normal">
-                    Monitoring mark price on Arbitrum One. You can also trigger the real exit sell trade onchain now:
-                  </p>
+                  {/* Execution Side */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-normal">Execution Side</span>
+                    <span className="text-blue-600 font-medium">
+                      {selectedPosition.side} BRACKET (Definitive Flash)
+                    </span>
+                  </div>
 
-                  {onExecuteExitSell && (
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        disabled={isSelling}
-                        onClick={async () => {
-                          setIsSelling(true);
-                          try {
-                            await onExecuteExitSell(selectedPosition, "TAKE_PROFIT");
-                          } finally {
-                            setIsSelling(false);
-                          }
-                        }}
-                        className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-2xs cursor-pointer active:scale-95 disabled:opacity-60"
-                      >
-                        {isSelling ? "Executing Sell..." : `Run Take-Profit Sell (+${selectedPosition.takeProfitPct}%)`}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isSelling}
-                        onClick={async () => {
-                          setIsSelling(true);
-                          try {
-                            await onExecuteExitSell(selectedPosition, "STOP_LOSS");
-                          } finally {
-                            setIsSelling(false);
-                          }
-                        }}
-                        className="py-1.5 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition cursor-pointer active:scale-95 disabled:opacity-60"
-                      >
-                        Stop-Loss Sell
-                      </button>
+                  {/* Take-Profit Target */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-normal">Take-Profit Leg</span>
+                    <span className="text-emerald-600 font-medium">
+                      +{selectedPosition.takeProfitPct}% (${selectedPosition.takeProfitPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                    </span>
+                  </div>
+
+                  {/* Stop-Loss Target */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-normal">Stop-Loss Leg</span>
+                    <span className="text-rose-600 font-medium">
+                      -{selectedPosition.stopLossPct}% (${selectedPosition.stopLossPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                    </span>
+                  </div>
+
+                  {/* Custody (Main Connected Wallet) */}
+                  {selectedPosition.agentWallet?.masterController && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 font-normal">Custody (Funds Owner)</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-sm text-slate-900">
+                          {`${selectedPosition.agentWallet.masterController.slice(0, 6)}...${selectedPosition.agentWallet.masterController.slice(-4)}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyTx(selectedPosition.agentWallet!.masterController)}
+                          className="text-slate-400 hover:text-slate-600 transition p-0.5 cursor-pointer"
+                          title="Copy Wallet Address"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <a
+                          href={`https://arbiscan.io/address/${selectedPosition.agentWallet.masterController}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-slate-400 hover:text-blue-600 transition p-0.5"
+                          title="View on Arbiscan"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Agent Session Executor */}
+                  {selectedPosition.agentWallet && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 font-normal">Session Executor</span>
+                      <span className="font-mono text-sm text-slate-700 flex items-center gap-1.5">
+                        <span>
+                          {selectedPosition.agentWallet.sessionKeyAddress
+                            ? `${selectedPosition.agentWallet.sessionKeyAddress.slice(0, 6)}...${selectedPosition.agentWallet.sessionKeyAddress.slice(-4)}`
+                            : selectedPosition.agentWallet.address.slice(0, 8)}
+                        </span>
+                        <span className="text-[10px] font-sans font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
+                          Router Locked
+                        </span>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 0G TEE Verification */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-normal">0G Verification</span>
+                    <span className="text-blue-700 font-medium flex items-center gap-1 text-xs">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                      <span>≥ {Math.round(selectedPosition.confidenceThreshold * 100)}% Proof (0G Private TEE)</span>
+                    </span>
+                  </div>
+
+                  {/* Arkiv DB-Chain */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-normal">Arkiv DB-Chain</span>
+                    <button
+                      type="button"
+                      onClick={() => setArkivModalPosition(selectedPosition)}
+                      className="text-amber-700 hover:text-amber-900 font-medium text-xs flex items-center gap-1 cursor-pointer transition"
+                    >
+                      <Database className="w-3 h-3 text-amber-600" />
+                      <span>
+                        {selectedPosition.arkivEntityKey && isValidArkivKey(selectedPosition.arkivEntityKey)
+                          ? "Verified on Rabdi (7794095)"
+                          : "xmarket.agent_intent (Inspect)"}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Triggered Tweet */}
+                  {selectedPosition.triggeredTweet && (
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs mt-2">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Triggered Post:</span>
+                      <p className="text-slate-700 italic mt-0.5">
+                        &ldquo;{selectedPosition.triggeredTweet}&rdquo;
+                      </p>
                     </div>
                   )}
                 </div>
-              ) : null}
-            </div>
+              )}
 
-            {/* Modal Actions */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              {/* Option to Pause or Resume Agent */}
-              {(selectedPosition.status === "ARMED" || selectedPosition.status === "PAUSED" || selectedPosition.status === "OPEN") && onTogglePausePosition ? (
+              {/* Action Buttons: Exit Sell or Pause / Resume */}
+              {selectedPosition.status === "OPEN" && onExecuteExitSell && (
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={isSelling}
+                    onClick={async () => {
+                      setIsSelling(true);
+                      try {
+                        await onExecuteExitSell(selectedPosition, "TAKE_PROFIT");
+                      } finally {
+                        setIsSelling(false);
+                      }
+                    }}
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow-2xs cursor-pointer active:scale-95 disabled:opacity-60"
+                  >
+                    {isSelling ? "Executing Sell..." : `Take-Profit Sell (+${selectedPosition.takeProfitPct}%)`}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSelling}
+                    onClick={async () => {
+                      setIsSelling(true);
+                      try {
+                        await onExecuteExitSell(selectedPosition, "STOP_LOSS");
+                      } finally {
+                        setIsSelling(false);
+                      }
+                    }}
+                    className="py-2.5 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition cursor-pointer active:scale-95 disabled:opacity-60"
+                  >
+                    Stop-Loss Sell
+                  </button>
+                </div>
+              )}
+
+              {(selectedPosition.status === "ARMED" || selectedPosition.status === "PAUSED") && onTogglePausePosition && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    disabled={isTogglingPause}
+                    onClick={async () => {
+                      setIsTogglingPause(true);
+                      try {
+                        await onTogglePausePosition(selectedPosition);
+                        setSelectedPosition((prev) => {
+                          if (!prev) return null;
+                          const isCurrentlyPaused = prev.status === "PAUSED";
+                          const nextStatus: PositionStatus = isCurrentlyPaused
+                            ? (prev.entryTxHash ? "OPEN" : "ARMED")
+                            : "PAUSED";
+                          return { ...prev, status: nextStatus };
+                        });
+                      } finally {
+                        setIsTogglingPause(false);
+                      }
+                    }}
+                    className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
+                      selectedPosition.status === "PAUSED"
+                        ? "bg-blue-600 hover:bg-blue-500 text-white"
+                        : "bg-amber-500 hover:bg-amber-600 text-white"
+                    }`}
+                  >
+                    {selectedPosition.status === "PAUSED" ? (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>{isTogglingPause ? "Resuming..." : "Resume Agent"}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="w-3.5 h-3.5 fill-current" />
+                        <span>{isTogglingPause ? "Pausing..." : "Pause Agent"}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Bottom Full-Width Close Button (Uniswap Reference style) */}
+              <div className="pt-1">
                 <button
                   type="button"
-                  disabled={isTogglingPause}
-                  onClick={async () => {
-                    setIsTogglingPause(true);
-                    try {
-                      await onTogglePausePosition(selectedPosition);
-                      setSelectedPosition((prev) => {
-                        if (!prev) return null;
-                        const isCurrentlyPaused = prev.status === "PAUSED";
-                        const nextStatus: PositionStatus = isCurrentlyPaused
-                          ? (prev.entryTxHash ? "OPEN" : "ARMED")
-                          : "PAUSED";
-                        return { ...prev, status: nextStatus };
-                      });
-                    } finally {
-                      setIsTogglingPause(false);
-                    }
-                  }}
-                  className={`px-4 py-2 rounded-full font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${selectedPosition.status === "PAUSED"
-                    ? "bg-blue-600 hover:bg-blue-500 text-white"
-                    : "bg-amber-500 hover:bg-amber-600 text-white"
-                    }`}
-                  title={selectedPosition.status === "PAUSED" ? "Resume agent event monitoring & trade triggers" : "Temporarily pause agent event triggers"}
+                  onClick={() => setSelectedPosition(null)}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200/80 text-slate-900 font-semibold text-base transition-colors duration-150 cursor-pointer active:scale-[0.99] text-center"
                 >
-                  {selectedPosition.status === "PAUSED" ? (
-                    <>
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>{isTogglingPause ? "Resuming..." : "Resume Agent"}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="w-3.5 h-3.5 fill-current" />
-                      <span>{isTogglingPause ? "Pausing..." : "Pause Agent"}</span>
-                    </>
-                  )}
+                  Close
                 </button>
-              ) : <div />}
-
-              <button
-                type="button"
-                onClick={() => setSelectedPosition(null)}
-                className="px-6 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition cursor-pointer shadow-xs"
-              >
-                Dismiss
-              </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Arkiv Entity Inspector & Sync Modal */}
       {arkivModalPosition && (

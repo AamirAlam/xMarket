@@ -6,12 +6,19 @@ export async function GET(req: Request) {
   const urlParam = searchParams.get("url");
   const handle = searchParams.get("handle") || "federalreserve";
   const sinceId = searchParams.get("sinceId") || undefined;
+  const createdAfter = searchParams.get("createdAfter") || undefined;
   const bearerToken = req.headers.get("x-twitter-token") || undefined;
 
   try {
     if (urlParam) {
       const tweet = await fetchTweetByUrl(urlParam);
       if (tweet) {
+        if (createdAfter) {
+          const minTime = new Date(createdAfter).getTime();
+          if (minTime > 0 && !isNaN(minTime) && new Date(tweet.createdAt).getTime() <= minTime) {
+            return NextResponse.json({ success: true, handle: tweet.author, tweets: [] });
+          }
+        }
         return NextResponse.json({ success: true, handle: tweet.author, tweets: [tweet] });
       }
       return NextResponse.json({ success: false, error: "Could not parse tweet from URL" }, { status: 404 });
@@ -21,6 +28,7 @@ export async function GET(req: Request) {
       handle,
       bearerToken,
       sinceId,
+      createdAfter,
     });
     return NextResponse.json({ success: true, handle, tweets });
   } catch (error: any) {

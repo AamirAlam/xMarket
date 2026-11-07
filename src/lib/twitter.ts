@@ -64,23 +64,34 @@ export async function fetchLatestTweetsForHandle({
   handle,
   bearerToken,
   sinceId,
+  createdAfter,
 }: {
   handle: string;
   bearerToken?: string;
   sinceId?: string;
+  createdAfter?: string;
 }): Promise<DetectedTweet[]> {
   const cleanHandle = handle.replace("@", "").trim();
   const token = bearerToken || process.env.TWITTER_BEARER_TOKEN;
+  const minTimestamp = createdAfter ? new Date(createdAfter).getTime() : 0;
+
+  // Helper to filter tweets by both createdAfter (strictly newer than agent creation) and sinceId
+  const filterFresh = (list: DetectedTweet[]): DetectedTweet[] => {
+    let result = list;
+    if (minTimestamp > 0 && !isNaN(minTimestamp)) {
+      result = result.filter((t) => new Date(t.createdAt).getTime() > minTimestamp);
+    }
+    if (sinceId) {
+      result = result.filter((t) => isNewerTweet(t.id, sinceId));
+    }
+    return result;
+  };
 
   // 1. Check in-memory rate-limit cache first to prevent upstream 429 rate limit errors
   const cached = handleFeedCache.get(cleanHandle.toLowerCase());
   const now = Date.now();
   if (cached && now - cached.timestamp < CACHE_TTL_MS) {
-    if (sinceId) {
-      const fresh = cached.tweets.filter((t) => isNewerTweet(t.id, sinceId));
-      return fresh;
-    }
-    return cached.tweets;
+    return filterFresh(cached.tweets);
   }
 
   // 2. If Official Twitter v2 Bearer Token is available and active, try official API
@@ -113,10 +124,7 @@ export async function fetchLatestTweetsForHandle({
           tweets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
           handleFeedCache.set(cleanHandle.toLowerCase(), { timestamp: now, tweets });
-          if (sinceId) {
-            return tweets.filter((t) => isNewerTweet(t.id, sinceId));
-          }
-          return tweets;
+          return filterFresh(tweets);
         }
       } else {
         if (res.status === 402 || res.status === 401 || res.status === 403) {
@@ -184,11 +192,7 @@ export async function fetchLatestTweetsForHandle({
         parsedTweets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         handleFeedCache.set(cleanHandle.toLowerCase(), { timestamp: now, tweets: parsedTweets });
-        if (sinceId) {
-          const fresh = parsedTweets.filter((t) => isNewerTweet(t.id, sinceId));
-          return fresh;
-        }
-        return parsedTweets;
+        return filterFresh(parsedTweets);
       }
     } else {
       console.warn(`FxTwitter feed returned status ${feedRes.status} for @${cleanHandle}`);
@@ -199,19 +203,12 @@ export async function fetchLatestTweetsForHandle({
 
   // 4. Return cached tweets if recent fetch failed (prevents momentary rate-limit dropouts)
   if (cached && cached.tweets.length > 0) {
-    if (sinceId) {
-      return cached.tweets.filter((t) => isNewerTweet(t.id, sinceId));
-    }
-    return cached.tweets;
+    return filterFresh(cached.tweets);
   }
 
   // 5. Fallback: Check in-memory live test buffer (for manual injections)
   const buffered = liveTweetBuffer.get(cleanHandle.toLowerCase()) || [];
-  if (sinceId) {
-    const fresh = buffered.filter((t) => isNewerTweet(t.id, sinceId));
-    return fresh;
-  }
-  return buffered;
+  return filterFresh(buffered);
 }
 
 export async function fetchTweetByUrl(url: string): Promise<DetectedTweet | null> {
