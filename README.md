@@ -7,7 +7,7 @@
 
 ## Overview
 
-Breaking social events and macroeconomic catalysts move crypto markets within seconds. However, automated trading on breaking news traditionally suffers from two fundamental vulnerabilities:
+Social events and macroeconomic catalysts move crypto markets within seconds. However, automated trading on breaking news traditionally suffers from two fundamental vulnerabilities:
 
 1. **Unverifiable Sentiment Oracles:** Centralized AI sentiment models can be front-run, manipulated via prompt injection, or fabricated by malicious operators without cryptographic accountability.
 2. **Execution Slippage & Toxic MEV:** Executing naive market orders during high-volatility breaking news exposes traders to severe sandwich attacks, adverse price impact, and uncontrolled drawdowns.
